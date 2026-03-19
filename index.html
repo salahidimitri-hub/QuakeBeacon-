@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<title>QUAKEBEACON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #050508;
+    --bg2:      #080810;
+    --bg3:      #0a0a18;
+    --border:   #1a1a2e;
+    --red:      #FF4400;
+    --red-dim:  #880000;
+    --red-glow: #FF220044;
+    --blue:     #0088FF;
+    --blue-dim: #001A44;
+    --green:    #00FF88;
+    --text:     #E8E0D0;
+    --muted:    #334455;
+    --mono:     'Share Tech Mono', monospace;
+    --display:  'Bebas Neue', cursive;
+    --cond:     'Barlow Condensed', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%; width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* ─── STROBE OVERLAY ─────────────────────────── */
+  #strobe {
+    position: fixed; inset: 0; z-index: 9999;
+    pointer-events: none;
+    background: #fff;
+    opacity: 0;
+    mix-blend-mode: screen;
+    transition: opacity 0.04s;
+  }
+  #strobe.on { opacity: 1; }
+
+  /* ─── LAYOUT ─────────────────────────────────── */
+  #app { display: flex; flex-direction: column; height: 100%; }
+
+  /* ─── HEADER ─────────────────────────────────── */
+  #header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px 8px;
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .logo-ring {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--bg2); border: 2px solid #252535;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .logo-text { flex: 1; }
+  .logo-title {
+    font-family: var(--display);
+    font-size: 22px; letter-spacing: 3px; color: var(--text);
+    line-height: 1;
+  }
+  .logo-sub {
+    font-size: 7px; color: #334; letter-spacing: 2px; margin-top: 2px;
+  }
+  .signal-bars {
+    display: flex; align-items: flex-end; gap: 2px; height: 18px;
+  }
+  .signal-bar {
+    width: 4px; border-radius: 1px; background: var(--border);
+    transition: background 0.3s;
+  }
+  .signal-bar.active { background: var(--red); }
+
+  /* ─── TABS ───────────────────────────────────── */
+  #tabs {
+    display: flex; background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1; padding: 11px 0; text-align: center;
+    font-family: var(--display); font-size: 14px; letter-spacing: 2px;
+    color: var(--muted); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active-survivor { color: var(--red); border-color: var(--red); }
+  .tab.active-rescuer  { color: var(--blue); border-color: var(--blue); }
+
+  /* ─── SCREENS ────────────────────────────────── */
+  .screen {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    display: none; flex-direction: column;
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen.visible { display: flex; }
+
+  /* ─── SURVIVOR SCREEN ────────────────────────── */
+  #screen-survivor { padding: 14px; gap: 10px; }
+
+  /* Status bar */
+  .status-bar {
+    background: var(--bg2); border-radius: 8px;
+    border: 1px solid var(--border); padding: 12px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: all 0.3s;
+  }
+  .status-bar.active { background: #1A0500; border-color: #FF220033; }
+  .status-label { font-size: 8px; color: var(--muted); letter-spacing: 2px; margin-bottom: 4px; }
+  .status-text { font-family: var(--display); font-size: 18px; letter-spacing: 2px; color: #334455; }
+  .status-text.on { color: var(--red); }
+  .chip-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip {
+    padding: 2px 5px; border-radius: 3px;
+    background: #111; border: 1px solid var(--border);
+    font-size: 8px; color: #223; letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+  .chip.on { background: #FF220018; border-color: #FF440044; color: #FF6600; }
+
+  /* Elapsed */
+  #elapsed {
+    font-size: 28px; color: #FF6600; text-align: center;
+    letter-spacing: 4px; font-family: var(--mono);
+    height: 0; overflow: hidden; opacity: 0;
+    transition: all 0.3s;
+  }
+  #elapsed.visible { height: auto; opacity: 1; }
+  #beacon-id { font-size: 10px; color: var(--muted); text-align: center; letter-spacing: 2px; }
+
+  /* Big beacon button */
+  .btn-wrap {
+    display: flex; justify-content: center; align-items: center;
+    padding: 10px 0; position: relative; flex-shrink: 0;
+  }
+  .pulse-ring {
+    position: absolute; border-radius: 50%;
+    border: 3px solid var(--red);
+    width: 200px; height: 200px;
+    opacity: 0; pointer-events: none;
+    animation: none;
+  }
+  .pulse-ring.active { animation: pulseRing 1.4s ease-out infinite; }
+  .pulse-ring:nth-child(2) { animation-delay: 0.7s; }
+  @keyframes pulseRing {
+    0%   { transform: scale(1); opacity: 0.7; }
+    100% { transform: scale(2.4); opacity: 0; }
+  }
+  #beacon-btn {
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #CC2200, var(--red-dim));
+    border: 4px solid #FF3300;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 0 40px #FF220066, 0 0 80px #FF220022, inset 0 0 30px #00000055;
+    transition: all 0.15s;
+    position: relative; z-index: 2;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+  #beacon-btn:active { transform: scale(0.96); }
+  #beacon-btn.active {
+    background: radial-gradient(circle at 35% 35%, #FF5500, #AA1100);
+    box-shadow: 0 0 60px #FF330099, 0 0 120px #FF220033, inset 0 0 30px #FF220011;
+  }
+  #beacon-btn.flash {
+    background: radial-gradient(circle at 35% 35%, #FF8800, #FF4400);
+    border-color: #FFAA00;
+    box-shadow: 0 0 80px #FF8800, 0 0 40px #FFAA0044;
+  }
+  .btn-label {
+    font-family: var(--display); font-size: 42px;
+    color: #FFE0D0; letter-spacing: 4px; line-height: 1;
+  }
+  .btn-sub { font-size: 9px; color: #FF9988; letter-spacing: 3px; margin-top: 5px; }
+
+  /* Cards */
+  .card {
+    background: var(--bg2); border-radius: 8px;
+    border: 1px solid var(--border); padding: 13px;
+    display: flex; align-items: center; gap: 11px;
+    transition: border-color 0.3s;
+  }
+  .card.green { border-color: #00FF8833; }
+  .card-icon { font-size: 20px; flex-shrink: 0; }
+  .card-body { flex: 1; }
+  .card-title {
+    font-family: var(--cond); font-weight: 600;
+    font-size: 14px; color: var(--text); letter-spacing: 1px; margin-bottom: 3px;
+  }
+  .card-mono { font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+  .tx-dot { font-size: 11px; color: #224; transition: color 0.3s; }
+  .tx-dot.on { color: var(--blue); }
+  .toggle {
+    width: 46px; height: 26px; border-radius: 13px;
+    background: #1a1a2e; border: 1px solid #333;
+    position: relative; cursor: pointer; flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .toggle.on { background: #00AA55; }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; top: 2px; left: 2px;
+    transition: transform 0.25s;
+    box-shadow: 0 1px 4px #0006;
+  }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* Tip box */
+  .tip-box {
+    background: var(--bg2); border-radius: 8px;
+    border: 1px solid var(--border); padding: 13px;
+    font-size: 10px; color: #335; line-height: 20px;
+    margin-bottom: 20px;
+  }
+
+  /* ─── RESCUER SCREEN ─────────────────────────── */
+  #screen-rescuer { padding: 0; gap: 0; }
+  .rescuer-header {
+    background: #000D1A; border-bottom: 1px solid #0055FF33;
+    padding: 13px 16px;
+  }
+  .rescuer-title {
+    font-family: var(--display); font-size: 20px;
+    letter-spacing: 3px; color: var(--blue); margin-bottom: 3px;
+  }
+  .rescuer-sub { font-size: 10px; color: #335577; letter-spacing: 1px; }
+
+  /* Radar */
+  .radar-wrap {
+    display: flex; justify-content: center; padding: 18px;
+    background: linear-gradient(180deg, #000D1A 0%, var(--bg) 100%);
+    flex-shrink: 0;
+  }
+  .radar {
+    width: 180px; height: 180px; border-radius: 50%;
+    background: radial-gradient(circle, #00080F 0%, #000205 100%);
+    border: 1px solid #003366;
+    position: relative; overflow: hidden;
+  }
+  .radar-ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid #003366;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+  }
+  .radar-line-h, .radar-line-v {
+    position: absolute; background: #002244;
+  }
+  .radar-line-h { width: 100%; height: 1px; top: 50%; left: 0; }
+  .radar-line-v { height: 100%; width: 1px; left: 50%; top: 0; }
+  .radar-sweep {
+    position: absolute; top: 50%; left: 50%;
+    width: 2px; height: 50%; background: linear-gradient(to bottom, #0088FF88, transparent);
+    transform-origin: top center; margin-left: -1px;
+    display: none;
+  }
+  .radar-sweep.active {
+    display: block;
+    animation: sweep 2.5s linear infinite;
+  }
+  @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .radar-center {
+    position: absolute; top: 50%; left: 50%;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--blue); transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--blue);
+  }
+  .radar-blip {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--red); transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px var(--red);
+    animation: blip 1s ease-in-out infinite alternate;
+  }
+  @keyframes blip { from { opacity: 1; } to { opacity: 0.3; } }
+
+  .scan-btn {
+    margin: 0 16px 12px; padding: 12px;
+    background: var(--blue-dim); border: 1px solid #0055FF;
+    border-radius: 6px; text-align: center;
+    font-size: 12px; color: #00AAFF; letter-spacing: 2px;
+    cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+  }
+  .scan-btn:active { background: #001133; }
+  .scan-btn.active { border-color: #FF4400; color: #FF6600; background: #1A0000; }
+  .error-txt { font-size: 11px; color: var(--red); text-align: center; padding: 4px; }
+  .empty-txt { font-size: 11px; color: var(--muted); text-align: center; padding: 20px; }
+
+  #beacon-list { padding: 0 16px 20px; flex: 1; overflow-y: auto; }
+  .beacon-card {
+    background: #000D1A; border-left: 3px solid var(--blue);
+    border: 1px solid #0055FF33; border-left: 3px solid var(--blue);
+    border-radius: 6px; padding: 12px; margin-bottom: 10px;
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+  .bc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .bc-name { font-size: 11px; color: #FF6B00; letter-spacing: 2px; }
+  .bc-id   { font-size: 9px; color: var(--blue); }
+  .bc-dist { font-family: var(--display); font-size: 28px; color: #fff; }
+  .bc-unit { font-size: 13px; color: #aaa; }
+  .bc-meta { font-size: 9px; color: #446688; margin-top: 2px; }
+  .bars { display: flex; align-items: flex-end; gap: 3px; }
+  .bar {
+    width: 5px; border-radius: 2px; background: #112244;
+    transition: background 0.3s;
+  }
+  .bar.on { background: var(--blue); }
+
+  /* Shake detection */
+  .shake-indicator {
+    display: flex; justify-content: center; gap: 6px;
+    padding: 4px 0; flex-shrink: 0;
+  }
+  .shake-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); transition: background 0.2s;
+  }
+  .shake-dot.on { background: #FF8800; box-shadow: 0 0 8px #FF8800; }
+
+  /* Permission notice */
+  .perm-note {
+    font-size: 9px; color: #446; text-align: center;
+    padding: 4px 14px; flex-shrink: 0;
+  }
+
+  /* Location card */
+  #loc-card { display: none; }
+  #loc-card.visible { display: flex; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+</style>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#050508"/>
+<meta name="apple-mobile-web-app-title" content="QuakeBeacon"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23050508'/%3E%3Ccircle cx='90' cy='90' r='72' fill='none' stroke='%23FF4400' stroke-width='5'/%3E%3Ccircle cx='90' cy='90' r='45' fill='%23880000'/%3E%3Ctext x='90' y='108' text-anchor='middle' font-size='52' font-family='sans-serif' fill='%23FFE0D0'%3E◉%3C/text%3E%3C/svg%3E"/>
+</head>
+<body>
+<div id="strobe"></div>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div class="logo-ring">◉</div>
+    <div class="logo-text">
+      <div class="logo-title">QUAKEBEACON</div>
+      <div class="logo-sub">CC0 · OPEN SOURCE · HUMANITARIAN · MARCH 2026</div>
+    </div>
+    <div class="signal-bars" id="signal-bars">
+      <div class="signal-bar" style="height:5px" id="sb1"></div>
+      <div class="signal-bar" style="height:9px" id="sb2"></div>
+      <div class="signal-bar" style="height:13px" id="sb3"></div>
+      <div class="signal-bar" style="height:17px" id="sb4"></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div id="tabs">
+    <div class="tab active-survivor" id="tab-survivor" onclick="switchTab('survivor')">⚡ SURVIVOR</div>
+    <div class="tab" id="tab-rescuer" onclick="switchTab('rescuer')">⬡ RESCUER</div>
+  </div>
+
+  <!-- SURVIVOR SCREEN -->
+  <div class="screen visible" id="screen-survivor">
+
+    <div class="status-bar" id="status-bar">
+      <div>
+        <div class="status-label">STATUS</div>
+        <div class="status-text" id="status-text">○ STANDBY</div>
+      </div>
+      <div class="chip-row">
+        <div class="chip" id="chip-flash">FLASH</div>
+        <div class="chip" id="chip-audio">AUDIO</div>
+        <div class="chip" id="chip-ble">BLE</div>
+        <div class="chip" id="chip-vib">VIB</div>
+        <div class="chip" id="chip-loc">LOC</div>
+      </div>
+    </div>
+
+    <div id="elapsed">00:00:00</div>
+    <div id="beacon-id">ID: QB-----</div>
+
+    <!-- Shake detection indicator -->
+    <div class="shake-indicator">
+      <div class="shake-dot" id="sd1"></div>
+      <div class="shake-dot" id="sd2"></div>
+      <div class="shake-dot" id="sd3"></div>
+    </div>
+
+    <div class="btn-wrap">
+      <div class="pulse-ring" id="ring1"></div>
+      <div class="pulse-ring" id="ring2"></div>
+      <button id="beacon-btn" onclick="toggleBeacon()">
+        <div class="btn-label" id="btn-label">BEACON</div>
+        <div class="btn-sub" id="btn-sub">TAP TO ACTIVATE</div>
+      </button>
+    </div>
+
+    <!-- Auto-detect toggle -->
+    <div class="card" id="auto-card">
+      <div class="card-icon" style="color:#FF8800">⚡</div>
+      <div class="card-body">
+        <div class="card-title" id="auto-title">AUTO-DETECT SHAKE</div>
+        <div class="card-mono" id="auto-mono">USES DEVICE ACCELEROMETER</div>
+      </div>
+      <div class="toggle" id="auto-toggle" onclick="toggleAuto()"></div>
+    </div>
+
+    <!-- BLE card -->
+    <div class="card">
+      <div class="card-icon">⬡</div>
+      <div class="card-body">
+        <div class="card-title">BLE BEACON</div>
+        <div class="card-mono" id="ble-mono">ACTIVATES WITH BEACON</div>
+      </div>
+      <div class="tx-dot" id="tx-dot">TX ○</div>
+    </div>
+
+    <!-- Location card -->
+    <div class="card" id="loc-card">
+      <div class="card-icon" style="color:#00FF88">📍</div>
+      <div class="card-body">
+        <div class="card-title" style="color:#00FF88">GPS LOCATION</div>
+        <div class="card-mono" id="loc-mono">ACQUIRING…</div>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      ▸ Keep phone face-up near gaps — strobe visible through debris<br/>
+      ▸ BLE signal reaches ~15 m through concrete<br/>
+      ▸ Auto-detect fires beacon after 3 rapid shakes<br/>
+      ▸ Survival mode: up to 72 hrs on a full battery
+    </div>
+
+  </div>
+
+  <!-- RESCUER SCREEN -->
+  <div class="screen" id="screen-rescuer">
+    <div class="rescuer-header">
+      <div class="rescuer-title">⬡ RESCUER SCANNER</div>
+      <div class="rescuer-sub">Range: 0–50 m · BLE 5.0 · Orange blips = survivors</div>
+    </div>
+    <div class="radar-wrap">
+      <div class="radar" id="radar">
+        <div class="radar-ring" style="width:130px;height:130px"></div>
+        <div class="radar-ring" style="width:86px;height:86px"></div>
+        <div class="radar-ring" style="width:44px;height:44px"></div>
+        <div class="radar-line-h"></div>
+        <div class="radar-line-v"></div>
+        <div class="radar-sweep" id="radar-sweep"></div>
+        <div class="radar-center"></div>
+      </div>
+    </div>
+
+    <div class="scan-btn" id="scan-btn" onclick="toggleScan()">⬡ &nbsp;SCAN FOR SURVIVORS</div>
+    <div class="error-txt" id="scan-error"></div>
+    <div class="empty-txt" id="scan-empty">No beacons detected — tap SCAN</div>
+    <div id="beacon-list"></div>
+  </div>
+
+  <div class="perm-note" id="perm-note">
+    For full functionality: allow motion &amp; location when prompted
+  </div>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────
+const BEACON_ID  = 'QB-' + (Math.floor(Math.random() * 9000) + 1000);
+const BLE_UUID   = 'e20a39f4-73f5-4bc4-a12f-17d1ad666661';
+
+let beaconActive = false;
+let autoDetect   = false;
+let elapsedSecs  = 0;
+let elTimer      = null;
+let sosTimer     = null;
+let sosIdx       = 0;
+let audioCtx     = null;
+let sirenNodes   = [];
+let motionSub    = null;
+let shakeCount   = 0;
+let shakeTimer   = null;
+let lastMag      = 0;
+let scanning     = false;
+let btDevice     = null;
+let beacons      = {};
+let scanInterval = null;
+let sirenRunning = false;
+let sirenInterval = null;
+let vibInterval  = null;
+let camStream    = null;
+let torchOn      = false;
+
+// SOS Morse: 3s 3l 3s (ms durations, alternating on/off)
+const SOS = [
+  300,100,300,100,300,400,
+  600,100,600,100,600,400,
+  300,100,300,100,300,1200,
+];
+
+// ─── TAB SWITCH ───────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('screen-survivor').classList.toggle('visible', tab === 'survivor');
+  document.getElementById('screen-rescuer').classList.toggle('visible', tab === 'rescuer');
+  document.getElementById('tab-survivor').className = 'tab' + (tab === 'survivor' ? ' active-survivor' : '');
+  document.getElementById('tab-rescuer').className  = 'tab' + (tab === 'rescuer'  ? ' active-rescuer'  : '');
+}
+
+// ─── BEACON ID DISPLAY ────────────────────────────────────
+document.getElementById('beacon-id').textContent = 'ID: ' + BEACON_ID;
+
+// ─── AUDIO CONTEXT ───────────────────────────────────────
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playSirenCycle() {
+  if (!sirenRunning) return;
+  const ctx = getAudioCtx();
+  const osc1 = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc1.type = 'sawtooth'; osc1.frequency.setValueAtTime(880, ctx.currentTime);
+  osc1.frequency.linearRampToValueAtTime(1400, ctx.currentTime + 0.6);
+  osc2.type = 'square';   osc2.frequency.setValueAtTime(440, ctx.currentTime);
+  osc2.frequency.linearRampToValueAtTime(660, ctx.currentTime + 0.6);
+
+  const gain2 = ctx.createGain(); gain2.gain.value = 0.3;
+  gain.gain.setValueAtTime(0.7, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.6);
+  gain.gain.setValueAtTime(0, ctx.currentTime + 0.65);
+
+  osc1.connect(gain); osc2.connect(gain2); gain.connect(ctx.destination); gain2.connect(ctx.destination);
+  osc1.start(ctx.currentTime); osc1.stop(ctx.currentTime + 0.7);
+  osc2.start(ctx.currentTime); osc2.stop(ctx.currentTime + 0.7);
+
+  if (sirenRunning) sirenInterval = setTimeout(playSirenCycle, 800);
+}
+
+function startSiren() { sirenRunning = true; playSirenCycle(); }
+function stopSiren()  { sirenRunning = false; clearTimeout(sirenInterval); }
+
+// ─── STROBE / VISUAL SOS ──────────────────────────────────
+const strobe = document.getElementById('strobe');
+const btn    = document.getElementById('beacon-btn');
+
+function runSOS() {
+  const idx  = sosIdx % SOS.length;
+  const isOn = idx % 2 === 0;
+  torchOn = isOn;
+  strobe.classList.toggle('on', isOn);
+  btn.classList.toggle('flash', isOn);
+  // Try camera torch
+  if (camStream) {
+    const track = camStream.getVideoTracks()[0];
+    if (track?.getCapabilities?.()?.torch) {
+      track.applyConstraints({ advanced: [{ torch: isOn }] }).catch(()=>{});
+    }
+  }
+  sosTimer = setTimeout(() => { sosIdx++; runSOS(); }, SOS[idx]);
+}
+
+function stopSOS() {
+  clearTimeout(sosTimer);
+  strobe.classList.remove('on');
+  btn.classList.remove('flash');
+  if (camStream) {
+    const track = camStream.getVideoTracks()[0];
+    if (track?.getCapabilities?.()?.torch) {
+      track.applyConstraints({ advanced: [{ torch: false }] }).catch(()=>{});
+    }
+  }
+}
+
+// ─── CAMERA TORCH ────────────────────────────────────────
+async function requestCameraTorch() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', torch: true }
+    });
+  } catch(e) { camStream = null; }
+}
+
+// ─── VIBRATION ───────────────────────────────────────────
+const VIB_PATTERN = [200,100,200,100,200,300,500,100,500,100,500,300,200,100,200,100,200,1000];
+
+function startVibration() {
+  if ('vibrate' in navigator) navigator.vibrate(VIB_PATTERN.concat(VIB_PATTERN));
+}
+function stopVibration()  {
+  if ('vibrate' in navigator) navigator.vibrate(0);
+}
+
+// ─── ELAPSED TIMER ───────────────────────────────────────
+function fmt(s) {
+  return [Math.floor(s/3600),Math.floor((s%3600)/60),s%60]
+    .map(n=>String(n).padStart(2,'0')).join(':');
+}
+
+// ─── GEOLOCATION ─────────────────────────────────────────
+function startLocation() {
+  document.getElementById('loc-card').classList.add('visible');
+  if (!navigator.geolocation) {
+    document.getElementById('loc-mono').textContent = 'NOT AVAILABLE ON THIS DEVICE';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude.toFixed(5);
+    const lon = pos.coords.longitude.toFixed(5);
+    document.getElementById('loc-mono').textContent = `${lat}°N  ${lon}°W · ACC ±${Math.round(pos.coords.accuracy)}m`;
+  }, () => {
+    document.getElementById('loc-mono').textContent = 'PERMISSION DENIED OR UNAVAILABLE';
+  });
+}
+
+// ─── SIGNAL BARS ANIMATION ───────────────────────────────
+let sigTimer = null;
+function animateSignal(on) {
+  clearInterval(sigTimer);
+  ['sb1','sb2','sb3','sb4'].forEach((id,i) => {
+    document.getElementById(id).classList.toggle('active', on && i < 2);
+  });
+  if (!on) return;
+  let step = 0;
+  sigTimer = setInterval(() => {
+    step++;
+    for (let i=0;i<4;i++) {
+      document.getElementById('sb'+(i+1)).classList.toggle('active', i < (step % 5));
+    }
+  }, 300);
+}
+
+// ─── ACTIVATE BEACON ─────────────────────────────────────
+async function activate() {
+  if (beaconActive) return;
+  beaconActive = true;
+  sosIdx = 0;
+
+  // UI
+  document.getElementById('status-bar').classList.add('active');
+  document.getElementById('status-text').textContent = '● BEACON ACTIVE';
+  document.getElementById('status-text').classList.add('on');
+  document.getElementById('btn-label').textContent = 'SOS';
+  document.getElementById('btn-sub').textContent = '● ACTIVE';
+  document.getElementById('beacon-btn').classList.add('active');
+  document.getElementById('ring1').classList.add('active');
+  document.getElementById('ring2').classList.add('active');
+  document.getElementById('elapsed').classList.add('visible');
+  ['chip-flash','chip-audio','chip-ble','chip-vib','chip-loc'].forEach(id=>
+    document.getElementById(id).classList.add('on')
+  );
+  document.getElementById('ble-mono').textContent = 'BROADCASTING · ' + BEACON_ID;
+  document.getElementById('tx-dot').textContent = 'TX ●';
+  document.getElementById('tx-dot').classList.add('on');
+  animateSignal(true);
+
+  // Audio (resume on user gesture)
+  getAudioCtx();
+  startSiren();
+
+  // Strobe SOS
+  runSOS();
+
+  // Vibration
+  startVibration();
+
+  // Camera torch (best-effort)
+  await requestCameraTorch();
+
+  // Location
+  startLocation();
+
+  // Elapsed timer
+  elapsedSecs = 0;
+  elTimer = setInterval(() => {
+    elapsedSecs++;
+    document.getElementById('elapsed').textContent = fmt(elapsedSecs);
+  }, 1000);
+}
+
+function deactivate() {
+  if (!beaconActive) return;
+  beaconActive = false;
+
+  stopSOS();
+  stopSiren();
+  stopVibration();
+  clearInterval(elTimer);
+  animateSignal(false);
+
+  if (camStream) { camStream.getTracks().forEach(t=>t.stop()); camStream = null; }
+
+  document.getElementById('status-bar').classList.remove('active');
+  document.getElementById('status-text').textContent = '○ STANDBY';
+  document.getElementById('status-text').classList.remove('on');
+  document.getElementById('btn-label').textContent = 'BEACON';
+  document.getElementById('btn-sub').textContent = 'TAP TO ACTIVATE';
+  document.getElementById('beacon-btn').classList.remove('active');
+  document.getElementById('ring1').classList.remove('active');
+  document.getElementById('ring2').classList.remove('active');
+  document.getElementById('elapsed').classList.remove('visible');
+  ['chip-flash','chip-audio','chip-ble','chip-vib','chip-loc'].forEach(id=>
+    document.getElementById(id).classList.remove('on')
+  );
+  document.getElementById('ble-mono').textContent = 'ACTIVATES WITH BEACON';
+  document.getElementById('tx-dot').textContent = 'TX ○';
+  document.getElementById('tx-dot').classList.remove('on');
+  document.getElementById('loc-card').classList.remove('visible');
+}
+
+function toggleBeacon() {
+  if (beaconActive) deactivate(); else activate();
+}
+
+// ─── AUTO-DETECT SHAKE ────────────────────────────────────
+function toggleAuto() {
+  autoDetect = !autoDetect;
+  const tog  = document.getElementById('auto-toggle');
+  const card = document.getElementById('auto-card');
+  const title = document.getElementById('auto-title');
+  tog.classList.toggle('on', autoDetect);
+  card.classList.toggle('green', autoDetect);
+  title.style.color = autoDetect ? '#00FF88' : '';
+  if (autoDetect) {
+    document.getElementById('auto-mono').textContent = 'LISTENING · 0/3';
+    startMotion();
+  } else {
+    document.getElementById('auto-mono').textContent = 'USES DEVICE ACCELEROMETER';
+    stopMotion();
+    resetShakeDots();
+  }
+}
+
+function startMotion() {
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().then(s => {
+      if (s === 'granted') attachMotion();
+    }).catch(()=>{});
+  } else {
+    attachMotion();
+  }
+}
+
+function attachMotion() {
+  window.addEventListener('devicemotion', onMotion);
+}
+function stopMotion() {
+  window.removeEventListener('devicemotion', onMotion);
+  shakeCount = 0;
+}
+
+function onMotion(e) {
+  const a = e.acceleration || e.accelerationIncludingGravity;
+  if (!a) return;
+  const mag   = Math.sqrt((a.x||0)**2 + (a.y||0)**2 + (a.z||0)**2);
+  const delta = Math.abs(mag - lastMag);
+  lastMag = mag;
+  if (delta > 15 && !beaconActive) {
+    shakeCount = Math.min(shakeCount + 1, 3);
+    updateShakeDots(shakeCount);
+    clearTimeout(shakeTimer);
+    shakeTimer = setTimeout(() => { shakeCount = 0; updateShakeDots(0); }, 2000);
+    document.getElementById('auto-mono').textContent = `SHAKE DETECTED · ${shakeCount}/3`;
+    if (shakeCount >= 3) { activate(); shakeCount = 0; resetShakeDots(); }
+  }
+}
+
+function updateShakeDots(n) {
+  for (let i=1;i<=3;i++)
+    document.getElementById('sd'+i).classList.toggle('on', i <= n);
+}
+function resetShakeDots() { updateShakeDots(0); }
+
+// ─── RESCUER SCANNER ─────────────────────────────────────
+function toggleScan() {
+  if (scanning) stopScan(); else startScan();
+}
+
+async function startScan() {
+  document.getElementById('scan-error').textContent = '';
+  document.getElementById('scan-empty').textContent = '';
+
+  if (!navigator.bluetooth) {
+    // Simulate demo mode
+    document.getElementById('scan-error').textContent =
+      'ℹ Web Bluetooth not available — showing demo data';
+    startDemoScan();
+    return;
+  }
+
+  try {
+    scanning = true;
+    updateScanUI(true);
+    btDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [BLE_UUID] }],
+      optionalServices: [BLE_UUID],
+    });
+    const bc = {
+      id:   btDevice.id,
+      name: btDevice.name || 'QB-LIVE',
+      rssi: -65,
+      dist: 4.2,
+      seen: Date.now(),
+    };
+    beacons[bc.id] = bc;
+    renderBeacons();
+    addRadarBlip(0.3, 0.4);
+  } catch(e) {
+    if (e.name !== 'NotFoundError') {
+      document.getElementById('scan-error').textContent = '⚠ ' + e.message;
+    } else {
+      document.getElementById('scan-empty').textContent = 'No beacons found in range';
+    }
+    scanning = false;
+    updateScanUI(false);
+  }
+}
+
+function startDemoScan() {
+  scanning = true;
+  updateScanUI(true);
+  beacons = {};
+  renderBeacons();
+
+  // Add fake beacons progressively
+  const fakes = [
+    { id:'demo-1', name:'QB-7284', rssi:-52, dist:3.1 },
+    { id:'demo-2', name:'QB-1193', rssi:-71, dist:11.4 },
+    { id:'demo-3', name:'QB-4477', rssi:-84, dist:28.9 },
+  ];
+  fakes.forEach((b,i) => {
+    setTimeout(() => {
+      b.seen = Date.now();
+      beacons[b.id] = b;
+      renderBeacons();
+      if (i===0) addRadarBlip(0.25, 0.35);
+      if (i===1) addRadarBlip(0.6,  0.2);
+      if (i===2) addRadarBlip(0.8,  0.7);
+    }, 800 + i*1200);
+  });
+
+  scanInterval = setTimeout(() => {
+    if (scanning) stopScan();
+  }, 60000);
+}
+
+function stopScan() {
+  scanning = false;
+  clearTimeout(scanInterval);
+  updateScanUI(false);
+}
+
+function updateScanUI(active) {
+  const btn = document.getElementById('scan-btn');
+  btn.classList.toggle('active', active);
+  btn.textContent = active ? '■  STOP SCAN' : '⬡  SCAN FOR SURVIVORS';
+  document.getElementById('radar-sweep').classList.toggle('active', active);
+  if (!active && Object.keys(beacons).length === 0) {
+    document.getElementById('scan-empty').textContent = 'No beacons — tap SCAN';
+  }
+}
+
+function rssiToMeters(rssi) {
+  if (rssi === 0) return 999;
+  const ratio = rssi / -59;
+  return ratio < 1
+    ? parseFloat(Math.pow(ratio, 10).toFixed(1))
+    : parseFloat((0.89976 * Math.pow(ratio, 7.7095) + 0.111).toFixed(1));
+}
+
+function renderBeacons() {
+  const list = Object.values(beacons).sort((a,b) => a.dist - b.dist);
+  const container = document.getElementById('beacon-list');
+  if (list.length === 0) { container.innerHTML = ''; return; }
+  document.getElementById('scan-empty').textContent = '';
+
+  container.innerHTML = list.map((b,i) => {
+    const bars = Math.ceil(Math.max(0, Math.min(100, ((b.rssi+100)/40)*100)) / 25);
+    const barHtml = [1,2,3,4].map(n =>
+      `<div class="bar ${n<=bars?'on':''}" style="height:${5+n*6}px"></div>`
+    ).join('');
+    const ago = Math.round((Date.now() - b.seen)/1000);
+    return `
+      <div class="beacon-card" style="animation-delay:${i*0.1}s">
+        <div class="bc-row">
+          <span class="bc-name">${b.name}</span>
+          <span class="bc-id">${b.id.slice(0,17)}</span>
+        </div>
+        <div class="bc-row">
+          <span class="bc-dist">${b.dist}<span class="bc-unit"> m</span></span>
+          <div class="bars">${barHtml}</div>
+        </div>
+        <div class="bc-meta">RSSI ${b.rssi} dBm · ${ago}s ago</div>
+      </div>`;
+  }).join('');
+}
+
+function addRadarBlip(cx, cy) {
+  const radar = document.getElementById('radar');
+  const b = document.createElement('div');
+  b.className = 'radar-blip';
+  b.style.left = (cx * 100) + '%';
+  b.style.top  = (cy * 100) + '%';
+  radar.appendChild(b);
+}
+
+// ─── KEEP SCREEN AWAKE (best-effort) ─────────────────────
+let wakeLock = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+  }
+}
+document.addEventListener('visibilitychange', async () => {
+  if (beaconActive && document.visibilityState === 'visible') requestWakeLock();
+});
+
+// ─── INIT ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('beacon-id').textContent = 'ID: ' + BEACON_ID;
+  document.getElementById('perm-note').textContent =
+    'Web app mode · For torch & BLE: use on mobile with permissions granted';
+});
+</script>
+<script>
+// ─── PWA: Service Worker Registration ───────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      console.log('[QuakeBeacon] SW registered:', reg.scope);
+      // Listen for messages from SW (e.g. auto-activate beacon)
+      navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data?.action === 'ACTIVATE_BEACON') activate();
+      });
+    }).catch(err => console.warn('[QuakeBeacon] SW error:', err));
+  });
+}
+
+// ─── PWA: Install Prompt ─────────────────────────────────
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner();
+});
+window.addEventListener('appinstalled', () => {
+  hideInstallBanner();
+  deferredInstallPrompt = null;
+});
+
+function showInstallBanner() {
+  const existing = document.getElementById('install-banner');
+  if (existing) return;
+  const banner = document.createElement('div');
+  banner.id = 'install-banner';
+  banner.style.cssText = `
+    position:fixed; bottom:64px; left:12px; right:12px; z-index:8888;
+    background:#0D1F0D; border:1px solid #00FF8844; border-radius:10px;
+    padding:13px 14px; display:flex; align-items:center; gap:12px;
+    font-family:'Share Tech Mono',monospace; font-size:11px;
+    box-shadow:0 4px 24px #00FF8822; animation: slideUp 0.3s ease;
+  `;
+  banner.innerHTML = \`
+    <span style="font-size:22px">📲</span>
+    <div style="flex:1">
+      <div style="color:#00FF88;letter-spacing:1px;font-size:12px;margin-bottom:3px">INSTALL QUAKEBEACON</div>
+      <div style="color:#446644;font-size:9px">Add to home screen — works offline, even after disaster</div>
+    </div>
+    <button onclick="doInstall()" style="
+      background:#00AA55;border:none;border-radius:6px;color:#fff;
+      padding:8px 12px;font-family:inherit;font-size:11px;
+      cursor:pointer;letter-spacing:1px;white-space:nowrap
+    ">INSTALL</button>
+    <button onclick="hideInstallBanner()" style="
+      background:none;border:none;color:#446644;font-size:16px;cursor:pointer;padding:4px
+    ">✕</button>
+  \`;
+  document.body.appendChild(banner);
+}
+
+function hideInstallBanner() {
+  const b = document.getElementById('install-banner');
+  if (b) b.remove();
+}
+
+async function doInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  hideInstallBanner();
+}
+
+// ─── iOS install hint (Safari doesn't support beforeinstallprompt) ──
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+
+if (isIOS && !isStandalone) {
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      const tip = document.createElement('div');
+      tip.style.cssText = \`
+        position:fixed;bottom:64px;left:12px;right:12px;z-index:8888;
+        background:#0D1A2E;border:1px solid #0055FF44;border-radius:10px;
+        padding:13px 14px;font-family:'Share Tech Mono',monospace;
+        font-size:10px;color:#335577;line-height:18px;
+        box-shadow:0 4px 24px #0055FF22;
+      \`;
+      tip.innerHTML = \`
+        <div style="color:#0088FF;font-size:12px;letter-spacing:1px;margin-bottom:5px">📲 INSTALL ON IPHONE</div>
+        Tap the <strong style="color:#aaa">Share</strong> button at the bottom of Safari, 
+        then <strong style="color:#aaa">"Add to Home Screen"</strong> — app works fully offline.
+        <button onclick="this.parentElement.remove()" style="
+          float:right;background:none;border:none;color:#335577;font-size:16px;cursor:pointer;margin-top:-4px
+        ">✕</button>
+      \`;
+      document.body.appendChild(tip);
+      setTimeout(() => tip.remove(), 12000);
+    }, 3000);
+  });
+}
+</script>
+</body>
+</html>
