@@ -1,0 +1,2 @@
+# QuakeBeacon-
+Earthquake victims finder
