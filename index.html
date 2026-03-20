@@ -42,8 +42,6 @@ html, body {
   -webkit-user-select: none;
 }
 
-
-
 /* ── APP SHELL ── */
 #app { display: flex; flex-direction: column; height: 100%; }
 
@@ -242,7 +240,6 @@ html, body {
     inset 0 0 40px #FF000011;
 }
 
-
 .btn-icon { font-size: 40px; margin-bottom: 6px; transition: all 0.2s; }
 .btn-label {
   font-family: var(--display); font-size: 32px;
@@ -300,6 +297,20 @@ html, body {
   transition: all 0.3s;
 }
 #sms-countdown.visible { height: auto; opacity: 1; padding: 2px 0; }
+
+/* Manual Resend Button */
+.resend-btn {
+  display: none; width: 100%; padding: 16px; margin-top: 8px;
+  background: #0A1A08; border: 1px solid #00E5A0; border-radius: 10px;
+  font-family: var(--display); font-size: 20px; color: var(--accent2);
+  letter-spacing: 3px; cursor: pointer; outline: none;
+  animation: pulseBorder 1.5s infinite;
+}
+@keyframes pulseBorder { 
+  0%, 100% { box-shadow: 0 0 5px #00E5A044; } 
+  50% { box-shadow: 0 0 15px #00E5A0; } 
+}
+.resend-btn:active { transform: scale(0.98); }
 
 /* Tips */
 .tip-row {
@@ -498,45 +509,7 @@ html, body {
 .credit-text { font-size: 10px; color: #2A3A4A; line-height: 18px; }
 .credit-text strong { color: var(--muted); }
 
-
-/* ── ACTIVATION METHODS ── */
-.activation-row { display:flex; gap:8px; margin:0 0 4px 0; }
-.act-card {
-  flex:1; background:var(--bg2); border:1px solid var(--border);
-  border-radius:10px; padding:12px; text-align:center; cursor:pointer;
-  transition:all 0.2s; position:relative; -webkit-tap-highlight-color:transparent;
-}
-.act-card.enabled  { border-color:#00E5A044; background:#081A10; }
-.act-card.listening{ border-color:#4FC3F7; background:#041525; animation:listenPulse 1.5s infinite; }
-@keyframes listenPulse {
-  0%,100%{ box-shadow:0 0 0 0 #4FC3F722; }
-  50%    { box-shadow:0 0 0 8px #4FC3F700; }
-}
-.act-icon  { font-size:22px; margin-bottom:5px; }
-.act-title { font-family:var(--cond); font-weight:600; font-size:13px; color:var(--text); letter-spacing:1px; margin-bottom:2px; }
-.act-sub   { font-size:9px; color:var(--muted); letter-spacing:1px; }
-.act-status{ font-size:9px; margin-top:5px; letter-spacing:1px; color:var(--muted); min-height:13px; }
-.act-toggle{
-  position:absolute; top:7px; right:7px;
-  width:8px; height:8px; border-radius:50%; background:var(--border); transition:all 0.3s;
-}
-.act-card.enabled  .act-toggle { background:#00E5A0; box-shadow:0 0 6px #00E5A0; }
-.act-card.listening .act-toggle{ background:#4FC3F7; box-shadow:0 0 6px #4FC3F7; }
-.shake-dots{ display:flex; justify-content:center; gap:5px; margin-top:5px; }
-.shake-dot { width:7px; height:7px; border-radius:50%; background:var(--border); transition:all 0.15s; }
-.shake-dot.hit { background:#FF6B35; box-shadow:0 0 6px #FF6B35; transform:scale(1.3); }
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: #1A2030; border-radius: 2px; }
-
 /* ── INSTALL BANNER ── */
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
-
 #install-btn {
   display:none; width:100%; padding:18px;
   background:linear-gradient(135deg,#006644,#004433);
@@ -579,7 +552,6 @@ html, body {
 <body>
 <div id="app">
 
-<!-- ── HEADER ── -->
 <div id="header">
   <div class="logo-pulse">
     <div class="logo-dot" id="logo-dot"></div>
@@ -591,20 +563,15 @@ html, body {
   <div class="header-status" id="header-status">STANDBY</div>
 </div>
 
-<!-- ── TABS ── -->
 <div id="tabs">
   <div class="tab active-beacon" id="tab-beacon"   onclick="switchTab('beacon')">🛡 BEACON</div>
   <div class="tab" id="tab-contacts" onclick="switchTab('contacts')">📡 CONTACTS</div>
   <div class="tab" id="tab-info"     onclick="switchTab('info')">ℹ INFO</div>
 </div>
 
-<!-- ════════════════════════════════════
-     BEACON SCREEN
-════════════════════════════════════ -->
 <div class="screen visible" id="screen-beacon">
 
-
-  <button id="install-btn" onclick="doInstall()">📲 &nbsp;ADD TO PHONE</button>
+  <button id="install-btn" onclick="doInstall()">📲  ADD TO PHONE</button>
   <div id="ios-steps">
     <span id="ios-arrow">⬆</span>
     <strong style="color:#4FC3F7;font-size:14px;letter-spacing:2px">ADD TO HOME SCREEN</strong><br/>
@@ -612,9 +579,8 @@ html, body {
     2. Tap <strong style="color:#eee">"Add to Home Screen"</strong><br/>
     3. Tap <strong style="color:#eee">Add</strong> — done!
   </div>
-  <div id="installed-msg">✓ &nbsp;SAFEBEACON IS ON YOUR PHONE</div>
+  <div id="installed-msg">✓  SAFEBEACON IS ON YOUR PHONE</div>
 
-  <!-- Situation chips -->
   <div class="situation-row">
     <div class="sit-chip selected" id="sit-0" onclick="selectSituation(0,'🆘','EMERGENCY','I NEED HELP — EMERGENCY')">
       <span class="sit-icon">🆘</span>EMERGENCY
@@ -636,7 +602,6 @@ html, body {
     </div>
   </div>
 
-  <!-- Status strip -->
   <div class="status-strip" id="status-strip">
     <div>
       <div class="status-label">STATUS</div>
@@ -650,11 +615,10 @@ html, body {
     </div>
   </div>
 
-  <!-- Elapsed -->
   <div id="elapsed">00:00:00</div>
   <div id="sms-countdown"></div>
+  <button id="resend-btn" class="resend-btn" onclick="manualResend()">PULSE TO RESEND SMS NOW</button>
 
-  <!-- Big button -->
   <div class="btn-arena">
     <div class="orbit" id="orbit1"></div>
     <div class="orbit" id="orbit2"></div>
@@ -665,11 +629,9 @@ html, body {
     </button>
   </div>
 
-  <!-- Situation message -->
   <div id="situation-msg">SELECT A SITUATION ABOVE</div>
 
-  <!-- GPS card -->
-  <div class="info-card" id="gps-card" style="display:none">
+  <div class="info-card" id="gps-card">
     <div class="ic-icon">📍</div>
     <div class="ic-body">
       <div class="ic-title" style="color:var(--accent2)">GPS LOCATION CAPTURED</div>
@@ -677,7 +639,6 @@ html, body {
     </div>
   </div>
 
-  <!-- Contacts count card -->
   <div class="info-card" id="contacts-card">
     <div class="ic-icon">📲</div>
     <div class="ic-body">
@@ -687,7 +648,6 @@ html, body {
     <div class="ic-badge" id="contacts-badge">0</div>
   </div>
 
-  <!-- Sound card -->
   <div class="info-card" id="sound-card">
     <div class="ic-icon">🔊</div>
     <div class="ic-body">
@@ -699,16 +659,13 @@ html, body {
 
   <div class="tip-row">
     ▸ Tap BEACON — siren fires, GPS captured, SMS sent to contacts<br/>
-    ▸ SMS repeats every 5 minutes until you tap BEACON again to stop<br/>
+    ▸ SMS prompt repeats every 5 minutes until cancelled<br/>
     ▸ Works offline — SMS sends the moment signal returns<br/>
     ▸ Contacts saved privately on your device only
   </div>
 
 </div>
 
-<!-- ════════════════════════════════════
-     CONTACTS SCREEN
-════════════════════════════════════ -->
 <div class="screen" id="screen-contacts">
 
   <div class="contacts-hero">
@@ -718,7 +675,6 @@ html, body {
     </div>
   </div>
 
-  <!-- Contact 1 -->
   <div class="contact-block" id="cb1">
     <div class="cb-header">
       <div class="cb-num" id="cn1">1</div>
@@ -735,7 +691,6 @@ html, body {
     <div class="sms-preview" id="sp1"></div>
   </div>
 
-  <!-- Contact 2 -->
   <div class="contact-block" id="cb2">
     <div class="cb-header">
       <div class="cb-num" id="cn2">2</div>
@@ -752,7 +707,6 @@ html, body {
     <div class="sms-preview" id="sp2"></div>
   </div>
 
-  <!-- Contact 3 -->
   <div class="contact-block" id="cb3">
     <div class="cb-header">
       <div class="cb-num" id="cn3">3</div>
@@ -769,16 +723,14 @@ html, body {
     <div class="sms-preview" id="sp3"></div>
   </div>
 
-  <!-- Repeat SMS setting -->
   <div class="repeat-setting">
     <div class="rs-body">
-      <div class="rs-title">REPEAT SMS EVERY 5 MIN</div>
-      <div class="rs-sub" id="repeat-sub">Re-sends location until beacon is cancelled</div>
+      <div class="rs-title">PULSE REMINDER EVERY 5 MIN</div>
+      <div class="rs-sub" id="repeat-sub">Prompts you to re-send location until cancelled</div>
     </div>
     <div class="toggle on" id="repeat-toggle" onclick="toggleRepeat()"></div>
   </div>
 
-  <!-- Test button -->
   <div class="test-btn" onclick="testSMS()">
     ⚡ TEST — SEND SOS SMS NOW
   </div>
@@ -793,9 +745,6 @@ html, body {
 
 </div>
 
-<!-- ════════════════════════════════════
-     INFO SCREEN
-════════════════════════════════════ -->
 <div class="screen" id="screen-info">
 
   <div class="info-hero">
@@ -825,7 +774,7 @@ html, body {
     <div class="use-case">
       <div class="uc-icon">👴</div>
       <div class="uc-title">Elderly Fall</div>
-      <div class="uc-sub">Shake detection fires the beacon automatically</div>
+      <div class="uc-sub">Instant alert ensures help arrives fast</div>
     </div>
     <div class="use-case">
       <div class="uc-icon">🏥</div>
@@ -855,7 +804,7 @@ html, body {
     </div>
     <div class="hiw-step">
       <div class="step-num">4</div>
-      <div class="step-text"><strong>Repeats every 5 minutes</strong> — your location is re-sent automatically until you tap BEACON again to cancel.</div>
+      <div class="step-text"><strong>Repeats every 5 minutes</strong> — you will be prompted to re-send your location automatically until you tap BEACON again to cancel.</div>
     </div>
     <div class="hiw-step">
       <div class="step-num">5</div>
@@ -866,16 +815,14 @@ html, body {
   <div class="credit-box">
     <div class="credit-title">OPEN SOURCE · CC0 · PUBLIC DOMAIN</div>
     <div class="credit-text">
-      Created by <strong>Kaveh Dimitri Salahi</strong> with Claude Anthropic · March 2026<br/>
+      Created by <strong>Kaveh Dimitri Salahi</strong> & Aether · March 2026<br/>
       Free for everyone. Governments, NGOs, organizations — deploy at any scale.<br/>
       No royalties. No barriers. No restrictions. Ever.
     </div>
   </div>
 
 </div>
-</div><!-- #app -->
-
-<script>
+</div><script>
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
@@ -884,12 +831,12 @@ let repeatSMS     = true;
 let elapsedSecs   = 0;
 let smsCountdown  = 300; // 5 min
 let elTimer       = null;
-let smsTimer      = null;
 let countTimer    = null;
 let audioCtx      = null;
 let sirenRunning  = false;
 let sirenTimeout  = null;
-let lastGPS       = null;
+let lastKnownLat  = null;
+let lastKnownLon  = null;
 
 let currentSit = { icon:'🆘', label:'EMERGENCY', msg:'I NEED HELP — EMERGENCY' };
 
@@ -943,9 +890,6 @@ function playSiren() {
 }
 function startSiren() { sirenRunning = true; playSiren(); }
 function stopSiren()  { sirenRunning = false; clearTimeout(sirenTimeout); }
-
-
-
 
 // ═══════════════════════════════════════════════════
 // CONTACTS
@@ -1004,21 +948,7 @@ function updateContactsBadge() {
 }
 
 // ═══════════════════════════════════════════════════
-// SMS
-// ═══════════════════════════════════════════════════
-
-
-
-
-
-
-
-
-
-
-
-// ═══════════════════════════════════════════════════
-// SMS  ── must fire synchronously on user gesture
+// SMS LOGIC
 // ═══════════════════════════════════════════════════
 function buildMessage(lat, lon) {
   const loc = (lat && lat !== 'null')
@@ -1035,7 +965,6 @@ function buildMessage(lat, lon) {
   return msgs[currentSit.label] || msgs['EMERGENCY'];
 }
 
-// Fire SMS via <a> click — most reliable cross-platform method
 function fireSMS(lat, lon) {
   const contacts = getContacts();
   if (!contacts.length) {
@@ -1050,7 +979,7 @@ function fireSMS(lat, lon) {
   a.click();
   document.body.removeChild(a);
   document.getElementById('chip-sms').classList.add('on');
-  showStatus('SMS sent to ' + contacts.length + ' contact' + (contacts.length > 1 ? 's' : ''), '#00E5A0');
+  showStatus('SMS prompted to ' + contacts.length + ' contact' + (contacts.length > 1 ? 's' : ''), '#00E5A0');
 }
 
 function sendAllClear() {
@@ -1066,27 +995,33 @@ function sendAllClear() {
   document.body.removeChild(a);
 }
 
-function startSMSRepeat(lat, lon) {
+function startSMSRepeat() {
   if (!repeatSMS) return;
   smsCountdown = 300;
+  document.getElementById('resend-btn').style.display = 'none';
   clearInterval(countTimer);
+  
   countTimer = setInterval(() => {
     smsCountdown--;
     const m = Math.floor(smsCountdown / 60);
     const s = String(smsCountdown % 60).padStart(2, '0');
-    showStatus('Next SMS in ' + m + ':' + s, '#3A4A5C');
+    showStatus('Next SMS prompt in ' + m + ':' + s, '#3A4A5C');
+    
     if (smsCountdown <= 0) {
-      smsCountdown = 300;
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          p => fireSMS(p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6)),
-          () => fireSMS(lat, lon)
-        );
-      } else {
-        fireSMS(lat, lon);
-      }
+      clearInterval(countTimer);
+      showStatus('ACTION REQUIRED: TAP BUTTON TO RESEND', '#FF6B35');
+      document.getElementById('resend-btn').style.display = 'block';
     }
   }, 1000);
+}
+
+function manualResend() {
+  // Capture fresh GPS if possible, otherwise use last known
+  captureGPS((lat, lon) => {
+    if (lat) { lastKnownLat = lat; lastKnownLon = lon; }
+    fireSMS(lastKnownLat, lastKnownLon);
+    startSMSRepeat();
+  });
 }
 
 function testSMS() {
@@ -1096,7 +1031,6 @@ function testSMS() {
     st.textContent = 'No contacts saved — add numbers in CONTACTS tab first';
     st.style.color = '#FF6B35'; return;
   }
-  // Fire immediately — on user gesture
   fireSMS(null, null);
   st.textContent = 'SMS opened — location will be added if GPS available';
   st.style.color = '#00E5A0';
@@ -1113,7 +1047,8 @@ function showStatus(msg, color) {
 function captureGPS(onDone) {
   const card   = document.getElementById('gps-card');
   const textEl = document.getElementById('gps-text');
-  if (card)   card.style.display = 'flex';
+  
+  if (card)   card.classList.add('visible');
   if (textEl) { textEl.textContent = 'Acquiring location...'; textEl.style.color = '#4FC3F7'; }
   document.getElementById('chip-gps').classList.add('on');
 
@@ -1126,7 +1061,6 @@ function captureGPS(onDone) {
       const lat = pos.coords.latitude.toFixed(6);
       const lon = pos.coords.longitude.toFixed(6);
       const acc = Math.round(pos.coords.accuracy);
-      lastGPS = { lat, lon };
       if (textEl) { textEl.textContent = lat + ', ' + lon + '  ±' + acc + 'm'; textEl.style.color = '#00E5A0'; }
       onDone(lat, lon);
     },
@@ -1140,195 +1074,12 @@ function captureGPS(onDone) {
 }
 
 // ═══════════════════════════════════════════════════
-// VOICE ACTIVATION
-// ═══════════════════════════════════════════════════
-let voiceEnabled = false;
-let recognition  = null;
-
-function toggleVoice() {
-  voiceEnabled ? stopVoice() : startVoice();
-}
-
-function startVoice() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    setVoiceStatus('Not available — use Chrome on Android', '#FF6B35');
-    return;
-  }
-  recognition              = new SR();
-  recognition.continuous   = false;  // restart manually — more reliable
-  recognition.lang         = 'en-US';
-  recognition.maxAlternatives = 3;
-
-  recognition.onstart = () => {
-    voiceEnabled = true;
-    document.getElementById('voice-card').classList.add('listening');
-    setVoiceStatus('LISTENING...', '#4FC3F7');
-  };
-
-  recognition.onresult = e => {
-    let heard = '';
-    for (let i = 0; i < e.results.length; i++) {
-      for (let j = 0; j < e.results[i].length; j++) {
-        heard += e.results[i][j].transcript.toLowerCase() + ' ';
-      }
-    }
-    heard = heard.trim();
-    const triggers = ['help','sos','emergency','save me','call help','beacon','mayday','danger'];
-    if (triggers.some(t => heard.includes(t))) {
-      setVoiceStatus('HEARD: "' + heard + '" — ACTIVATING', '#FF3366');
-      if (!beaconActive) activate();
-    } else {
-      setVoiceStatus('heard: "' + heard + '"', '#3A4A5C');
-    }
-    // Restart listening
-    if (voiceEnabled) setTimeout(() => { try { recognition.start(); } catch(e){} }, 300);
-  };
-
-  recognition.onerror = e => {
-    if (e.error === 'not-allowed') {
-      setVoiceStatus('Mic permission denied', '#FF6B35');
-      voiceEnabled = false;
-      document.getElementById('voice-card').classList.remove('listening','enabled');
-      return;
-    }
-    // Restart on no-speech or other recoverable errors
-    if (voiceEnabled) setTimeout(() => { try { recognition.start(); } catch(x){} }, 800);
-  };
-
-  recognition.onend = () => {
-    if (voiceEnabled) setTimeout(() => { try { recognition.start(); } catch(x){} }, 300);
-  };
-
-  try { recognition.start(); document.getElementById('voice-card').classList.add('enabled'); }
-  catch(e) { setVoiceStatus('Could not start microphone', '#FF6B35'); }
-}
-
-function stopVoice() {
-  voiceEnabled = false;
-  if (recognition) { try { recognition.abort(); } catch(e){} recognition = null; }
-  document.getElementById('voice-card').classList.remove('enabled','listening');
-  setVoiceStatus('TAP TO ENABLE', '');
-}
-
-function setVoiceStatus(msg, color) {
-  const el = document.getElementById('voice-status');
-  if (el) { el.textContent = msg; el.style.color = color || ''; }
-}
-
-// ═══════════════════════════════════════════════════
-// SHAKE ACTIVATION
-// ═══════════════════════════════════════════════════
-let shakeEnabled = false;
-let shakeCount   = 0;
-let lastMag      = 0;
-let shakeReset   = null;
-let lastShakeTime = 0;
-
-function toggleShake() {
-  shakeEnabled ? stopShake() : startShake();
-}
-
-function startShake() {
-  if (typeof DeviceMotionEvent !== 'undefined' &&
-      typeof DeviceMotionEvent.requestPermission === 'function') {
-    DeviceMotionEvent.requestPermission().then(r => {
-      if (r === 'granted') attachShake();
-      else setShakeStatus('Motion permission denied', '#FF6B35');
-    }).catch(() => setShakeStatus('Permission error', '#FF6B35'));
-  } else {
-    attachShake();
-  }
-}
-
-function attachShake() {
-  shakeEnabled = true;
-  shakeCount   = 0;
-  lastMag      = 0;
-  document.getElementById('shake-card').classList.add('enabled');
-  setShakeStatus('ARMED · SHAKE 3×', '#00E5A0');
-  updateShakeDots(0);
-  window.addEventListener('devicemotion', onShake, true);
-}
-
-function stopShake() {
-  shakeEnabled = false;
-  shakeCount   = 0;
-  window.removeEventListener('devicemotion', onShake, true);
-  document.getElementById('shake-card').classList.remove('enabled');
-  setShakeStatus('TAP TO ENABLE', '');
-  updateShakeDots(0);
-}
-
-function onShake(e) {
-  if (!shakeEnabled || beaconActive) return;
-  const ag  = e.accelerationIncludingGravity || e.acceleration;
-  if (!ag) return;
-  const mag   = Math.sqrt((ag.x||0)**2 + (ag.y||0)**2 + (ag.z||0)**2);
-  const delta = Math.abs(mag - lastMag);
-  lastMag     = mag;
-  const now   = Date.now();
-
-  // Threshold 20 — firm shake, not accidental bump
-  if (delta > 20 && (now - lastShakeTime) > 250) {
-    lastShakeTime = now;
-    shakeCount    = Math.min(shakeCount + 1, 3);
-    updateShakeDots(shakeCount);
-    setShakeStatus('SHAKE ' + shakeCount + ' / 3', '#FF6B35');
-    clearTimeout(shakeReset);
-    shakeReset = setTimeout(() => {
-      shakeCount = 0;
-      updateShakeDots(0);
-      setShakeStatus('ARMED · SHAKE 3×', '#00E5A0');
-    }, 2500);
-    if (shakeCount >= 3) {
-      clearTimeout(shakeReset);
-      shakeCount = 0;
-      updateShakeDots(0);
-      setShakeStatus('ACTIVATED!', '#FF3366');
-      activate();
-    }
-  }
-}
-
-function updateShakeDots(n) {
-  for (let i=1;i<=3;i++) {
-    const el = document.getElementById('sd'+i);
-    if (el) el.classList.toggle('hit', i <= n);
-  }
-}
-
-function setShakeStatus(msg, color) {
-  const el = document.getElementById('shake-status');
-  if (el) { el.textContent = msg; el.style.color = color || ''; }
-}
-
-// ═══════════════════════════════════════════════════
-// ACTIVATE / DEACTIVATE
-// ═══════════════════════════════════════════════════
-function toggleRepeat() {
-  repeatSMS = !repeatSMS;
-  document.getElementById('repeat-toggle').classList.toggle('on', repeatSMS);
-  document.getElementById('repeat-sub').textContent = repeatSMS
-    ? 'Re-sends location until beacon is cancelled'
-    : 'Single SMS only — no repeating';
-}
-
-// ═══════════════════════════════════════════════════
-// GEOLOCATION
-// ═══════════════════════════════════════════════════
-
-
-// ═══════════════════════════════════════════════════
-// VIBRATION
+// VIBRATION & WAKELOCK
 // ═══════════════════════════════════════════════════
 const VIB = [200,100,200,100,200,300,500,100,500,100,500,300,200,100,200,100,200,1000];
 function startVib() { if ('vibrate' in navigator) navigator.vibrate(VIB.concat(VIB)); }
 function stopVib()  { if ('vibrate' in navigator) navigator.vibrate(0); }
 
-// ═══════════════════════════════════════════════════
-// WAKE LOCK
-// ═══════════════════════════════════════════════════
 let wakeLock = null;
 async function keepAwake() {
   if ('wakeLock' in navigator) {
@@ -1339,13 +1090,20 @@ document.addEventListener('visibilitychange', () => {
   if (beaconActive && document.visibilityState === 'visible') keepAwake();
 });
 
+function toggleRepeat() {
+  repeatSMS = !repeatSMS;
+  document.getElementById('repeat-toggle').classList.toggle('on', repeatSMS);
+  document.getElementById('repeat-sub').textContent = repeatSMS
+    ? 'Prompts you to re-send location until cancelled'
+    : 'Single SMS only — no repeating';
+}
+
 // ═══════════════════════════════════════════════════
 // ACTIVATE / DEACTIVATE
 // ═══════════════════════════════════════════════════
 async function activate() {
   if (beaconActive) return;
   beaconActive = true;
-  sosIdx = 0;
   elapsedSecs = 0;
 
   // UI → ACTIVE
@@ -1378,16 +1136,12 @@ async function activate() {
   startVib();
   keepAwake();
 
-  // ── Fire SMS IMMEDIATELY on user gesture (must be synchronous)
-  fireSMS(null, null);
-
-  // ── GPS runs in background, updates display + resends with coords
+  // ── FETCH GPS FIRST, THEN FIRE SMS ──
   captureGPS((lat, lon) => {
-    if (lat) {
-      // Resend with real GPS after lock
-      setTimeout(() => fireSMS(lat, lon), 500);
-      if (repeatSMS) startSMSRepeat(lat, lon);
-    }
+    lastKnownLat = lat;
+    lastKnownLon = lon;
+    fireSMS(lat, lon);
+    if (repeatSMS) startSMSRepeat();
   });
 
   // Elapsed timer
@@ -1409,8 +1163,7 @@ function deactivate() {
   stopVib();
   clearInterval(elTimer);
   clearInterval(countTimer);
-  clearTimeout(smsTimer);
-
+  
   // Send All Clear
   sendAllClear();
 
@@ -1434,6 +1187,7 @@ function deactivate() {
   document.getElementById('situation-msg').textContent = 'SELECT A SITUATION ABOVE';
   document.getElementById('situation-msg').classList.remove('active');
   document.getElementById('gps-card').classList.remove('visible');
+  document.getElementById('resend-btn').style.display = 'none';
   document.getElementById('sound-badge').textContent = '○';
   document.getElementById('sound-badge').classList.remove('on');
   document.getElementById('sound-sub').textContent = 'ACTIVATES WITH BEACON';
@@ -1473,12 +1227,12 @@ function toggleBeacon() {
 
   window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault(); _dp = e;
-    if (!_sa) showBtn('📲 &nbsp;ADD TO PHONE');
+    if (!_sa) showBtn('📲  ADD TO PHONE');
   });
   window.addEventListener('appinstalled', function() { _dp = null; showDone(); });
   window.addEventListener('load', function() {
     if (_sa)       showDone();
-    else if (_ios) showBtn('📲 &nbsp;ADD TO IPHONE');
+    else if (_ios) showBtn('📲  ADD TO IPHONE');
   });
 
   window.doInstall = async function() {
