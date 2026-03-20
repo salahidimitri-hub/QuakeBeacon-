@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="theme-color" content="#06080F"/>
+<meta name="description" content="SafeBeacon — one tap sends your GPS location to your people. For any moment you need help."/>
+<link rel="manifest" href="manifest.json"/>
+<title>SafeBeacon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #06080F;
+  --bg2:      #0A0D18;
+  --bg3:      #0E1220;
+  --border:   #151C30;
+  --accent:   #4FC3F7;
+  --accent2:  #00E5A0;
+  --warn:     #FF6B35;
+  --danger:   #FF3366;
+  --text:     #E2EAF4;
+  --muted:    #3A4A5C;
+  --mono:     'Share Tech Mono', monospace;
+  --display:  'Bebas Neue', cursive;
+  --cond:     'Barlow Condensed', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+
+
+/* ── APP SHELL ── */
+#app { display: flex; flex-direction: column; height: 100%; }
+
+/* ── HEADER ── */
+#header {
+  background: linear-gradient(180deg, #0A0D18 0%, #06080F 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 18px 10px;
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+  position: relative;
+}
+#header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.3;
+}
+.logo-pulse {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #1A3A5C, #0A1525);
+  border: 2px solid #1E3A5C;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; position: relative;
+}
+.logo-pulse::before {
+  content: '';
+  position: absolute; inset: -4px; border-radius: 50%;
+  border: 1px solid var(--accent);
+  opacity: 0.2;
+}
+.logo-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+.logo-dot.armed {
+  background: var(--danger);
+  box-shadow: 0 0 12px var(--danger);
+  animation: dotPulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes dotPulse { from { opacity: 1; } to { opacity: 0.3; } }
+.logo-text { flex: 1; }
+.logo-title {
+  font-family: var(--display);
+  font-size: 24px; letter-spacing: 4px; color: var(--text);
+  line-height: 1;
+}
+.logo-title span { color: var(--accent); }
+.logo-sub { font-size: 7px; color: var(--muted); letter-spacing: 2px; margin-top: 2px; }
+.header-status {
+  font-size: 9px; letter-spacing: 2px; color: var(--muted);
+  text-align: right;
+}
+.header-status.live { color: var(--accent2); }
+
+/* ── TABS ── */
+#tabs {
+  display: flex; background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1; padding: 10px 0; text-align: center;
+  font-family: var(--display); font-size: 13px; letter-spacing: 2px;
+  color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.tab.active-beacon   { color: var(--accent);  border-color: var(--accent); }
+.tab.active-contacts { color: var(--accent2); border-color: var(--accent2); }
+.tab.active-info     { color: var(--warn);    border-color: var(--warn); }
+
+/* ── SCREENS ── */
+.screen {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  display: none; flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.visible { display: flex; }
+
+/* ═══════════════════════════════════════
+   BEACON SCREEN
+═══════════════════════════════════════ */
+#screen-beacon { padding: 16px; gap: 12px; align-items: stretch; }
+
+/* Situation selector */
+.situation-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.sit-chip {
+  flex: 1; min-width: 80px; padding: 8px 6px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; text-align: center;
+  font-size: 9px; color: var(--muted); letter-spacing: 1px;
+  cursor: pointer; transition: all 0.2s;
+}
+.sit-chip.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #0A1F35;
+}
+.sit-chip .sit-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+
+/* Status strip */
+.status-strip {
+  background: var(--bg2); border-radius: 8px;
+  border: 1px solid var(--border); padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  transition: all 0.4s;
+}
+.status-strip.armed {
+  background: #0A1F10;
+  border-color: #00E5A033;
+  box-shadow: 0 0 20px #00E5A011;
+}
+.status-strip.active {
+  background: #1A0A0A;
+  border-color: #FF336633;
+  box-shadow: 0 0 20px #FF336611;
+}
+.status-label { font-size: 8px; color: var(--muted); letter-spacing: 2px; margin-bottom: 4px; }
+.status-text {
+  font-family: var(--display); font-size: 18px;
+  letter-spacing: 2px; color: var(--muted);
+  transition: color 0.3s;
+}
+.status-text.armed  { color: var(--accent2); }
+.status-text.active { color: var(--danger); }
+.chip-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.chip {
+  padding: 2px 6px; border-radius: 4px;
+  background: #0A0D18; border: 1px solid var(--border);
+  font-size: 8px; color: #222; letter-spacing: 1px;
+  transition: all 0.3s;
+}
+.chip.on { background: #003322; border-color: #00E5A044; color: var(--accent2); }
+.chip.sms-on { background: #1A2200; border-color: #88FF0044; color: #88FF44; }
+
+/* Elapsed */
+#elapsed {
+  font-size: 32px; color: var(--danger); text-align: center;
+  letter-spacing: 6px; height: 0; overflow: hidden;
+  opacity: 0; transition: all 0.3s;
+}
+#elapsed.visible { height: auto; opacity: 1; padding: 4px 0; }
+
+/* ── BIG BEACON BUTTON ── */
+.btn-arena {
+  display: flex; justify-content: center; align-items: center;
+  padding: 8px 0; position: relative; flex-shrink: 0;
+}
+.orbit {
+  position: absolute; border-radius: 50%;
+  border: 1px solid var(--accent);
+  pointer-events: none; opacity: 0;
+}
+.orbit.active { animation: orbit 2s ease-out infinite; }
+.orbit:nth-child(2) { animation-delay: 1s; }
+@keyframes orbit {
+  0%   { width: 210px; height: 210px; opacity: 0.5; }
+  100% { width: 320px; height: 320px; opacity: 0; }
+}
+
+#beacon-btn {
+  width: 210px; height: 210px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #1A2A3A, #0A1220);
+  border: 3px solid #1E3A5C;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer; position: relative; z-index: 2;
+  box-shadow:
+    0 0 40px #4FC3F711,
+    0 0 0 8px #4FC3F708,
+    inset 0 0 40px #00000033;
+  transition: all 0.2s;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#beacon-btn:active { transform: scale(0.96); }
+
+#beacon-btn.armed {
+  background: radial-gradient(circle at 38% 32%, #0A2A1A, #061510);
+  border-color: #00E5A044;
+  box-shadow:
+    0 0 50px #00E5A022,
+    0 0 0 8px #00E5A008,
+    inset 0 0 40px #00000033;
+}
+#beacon-btn.active {
+  background: radial-gradient(circle at 38% 32%, #2A0A18, #15060F);
+  border-color: #FF336655;
+  box-shadow:
+    0 0 60px #FF336633,
+    0 0 0 8px #FF336608,
+    inset 0 0 40px #FF000011;
+}
+
+
+.btn-icon { font-size: 40px; margin-bottom: 6px; transition: all 0.2s; }
+.btn-label {
+  font-family: var(--display); font-size: 32px;
+  letter-spacing: 5px; line-height: 1;
+  color: var(--text); transition: color 0.2s;
+}
+.btn-label.armed  { color: var(--accent2); }
+.btn-label.active { color: #FF9999; }
+.btn-sub {
+  font-size: 8px; color: var(--muted);
+  letter-spacing: 3px; margin-top: 6px;
+  transition: color 0.2s;
+}
+.btn-sub.active { color: var(--danger); }
+
+/* Situation message */
+#situation-msg {
+  text-align: center; font-size: 12px;
+  color: var(--muted); letter-spacing: 1px;
+  min-height: 18px; transition: color 0.3s;
+}
+#situation-msg.active { color: var(--accent2); }
+
+/* Info cards */
+.info-card {
+  background: var(--bg2); border-radius: 8px;
+  border: 1px solid var(--border); padding: 13px;
+  display: flex; align-items: center; gap: 11px;
+  transition: all 0.3s;
+}
+.info-card.lit { border-color: #00E5A033; }
+.ic-icon { font-size: 18px; flex-shrink: 0; }
+.ic-body { flex: 1; }
+.ic-title {
+  font-family: var(--cond); font-weight: 600;
+  font-size: 13px; color: var(--text); letter-spacing: 1px;
+  margin-bottom: 2px;
+}
+.ic-sub { font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+.ic-badge {
+  font-size: 10px; color: var(--muted);
+  transition: color 0.3s;
+}
+.ic-badge.on { color: var(--accent2); }
+
+/* GPS card */
+#gps-card { display: none; }
+#gps-card.visible { display: flex; }
+
+/* SMS repeat countdown */
+#sms-countdown {
+  text-align: center; font-size: 11px;
+  color: var(--accent2); letter-spacing: 2px;
+  height: 0; overflow: hidden; opacity: 0;
+  transition: all 0.3s;
+}
+#sms-countdown.visible { height: auto; opacity: 1; padding: 2px 0; }
+
+/* Tips */
+.tip-row {
+  background: var(--bg2); border-radius: 8px;
+  border: 1px solid var(--border); padding: 13px;
+  font-size: 10px; color: #2A3A4A; line-height: 20px;
+  margin-bottom: 24px;
+}
+
+/* ═══════════════════════════════════════
+   CONTACTS SCREEN
+═══════════════════════════════════════ */
+#screen-contacts { padding: 16px; gap: 12px; }
+
+.contacts-hero {
+  background: linear-gradient(135deg, #081A10, #060F1A);
+  border-radius: 10px; border: 1px solid #00E5A022;
+  padding: 16px; text-align: center;
+}
+.contacts-hero-title {
+  font-family: var(--display); font-size: 22px;
+  letter-spacing: 3px; color: var(--accent2); margin-bottom: 6px;
+}
+.contacts-hero-sub {
+  font-size: 10px; color: #446655; line-height: 18px;
+}
+.contacts-hero-sub strong { color: var(--accent2); }
+
+.contact-block {
+  background: var(--bg2); border-radius: 10px;
+  border: 1px solid var(--border); padding: 14px;
+  transition: border-color 0.3s;
+}
+.contact-block.has-contact { border-color: #00E5A033; }
+.cb-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.cb-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--bg3); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--muted); flex-shrink: 0;
+  font-family: var(--display); letter-spacing: 1px;
+}
+.cb-num.filled {
+  background: #081A10; border-color: #00E5A044;
+  color: var(--accent2);
+}
+.cb-name-label {
+  font-family: var(--cond); font-weight: 600;
+  font-size: 14px; color: var(--text); letter-spacing: 1px; flex: 1;
+}
+.cb-check { font-size: 14px; color: var(--accent2); opacity: 0; transition: opacity 0.3s; }
+.cb-check.visible { opacity: 1; }
+
+.input-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.cb-input {
+  flex: 1; background: var(--bg);
+  border: 1px solid #1A2030; border-radius: 8px;
+  padding: 10px 12px; color: var(--text);
+  font-family: var(--mono); font-size: 14px;
+  outline: none; -webkit-appearance: none;
+  transition: border-color 0.2s;
+}
+.cb-input:focus { border-color: #00E5A033; }
+.cb-input::placeholder { color: #1E2A38; }
+.cb-name-input {
+  flex: 1; background: var(--bg);
+  border: 1px solid #1A2030; border-radius: 8px;
+  padding: 10px 12px; color: var(--text);
+  font-family: var(--mono); font-size: 13px;
+  outline: none; -webkit-appearance: none;
+}
+.cb-name-input::placeholder { color: #1E2A38; }
+.save-btn {
+  padding: 10px 14px;
+  background: #081A10; border: 1px solid #00AA66;
+  border-radius: 8px; font-family: var(--mono);
+  font-size: 10px; color: var(--accent2);
+  cursor: pointer; letter-spacing: 1px; white-space: nowrap;
+}
+.save-btn:active { background: #0D2518; }
+
+.sms-preview {
+  font-size: 9px; color: #2A4A38;
+  letter-spacing: 0.5px; line-height: 15px;
+  padding: 8px; background: #060F0A;
+  border-radius: 6px; border: 1px solid #0A2018;
+  display: none;
+}
+.sms-preview.visible { display: block; }
+
+.repeat-setting {
+  background: var(--bg2); border-radius: 10px;
+  border: 1px solid var(--border); padding: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.rs-body { flex: 1; }
+.rs-title {
+  font-family: var(--cond); font-weight: 600;
+  font-size: 14px; color: var(--text); letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+.rs-sub { font-size: 9px; color: var(--muted); }
+.toggle {
+  width: 48px; height: 26px; border-radius: 13px;
+  background: #1a1a2e; border: 1px solid #222;
+  position: relative; cursor: pointer; flex-shrink: 0;
+  transition: background 0.3s;
+}
+.toggle.on { background: #006644; border-color: #00AA66; }
+.toggle::after {
+  content: ''; position: absolute;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; top: 2px; left: 2px;
+  transition: transform 0.25s;
+  box-shadow: 0 1px 4px #0008;
+}
+.toggle.on::after { transform: translateX(22px); }
+
+.test-btn {
+  padding: 14px; text-align: center;
+  background: #0A1A08; border: 1px solid #00AA4422;
+  border-radius: 10px; font-size: 12px;
+  color: #44AA66; letter-spacing: 2px; cursor: pointer;
+  font-family: var(--mono);
+}
+.test-btn:active { background: #0D2010; }
+
+/* ═══════════════════════════════════════
+   INFO SCREEN
+═══════════════════════════════════════ */
+#screen-info { padding: 16px; gap: 12px; }
+
+.info-hero {
+  background: linear-gradient(135deg, #0A100A, #060810);
+  border-radius: 10px; padding: 20px; text-align: center;
+  border: 1px solid #1A2030;
+}
+.info-hero-title {
+  font-family: var(--display); font-size: 28px;
+  letter-spacing: 4px; color: var(--text); margin-bottom: 6px;
+}
+.info-hero-title span { color: var(--accent); }
+.info-hero-sub { font-size: 11px; color: var(--muted); line-height: 18px; }
+.info-hero-sub em { color: var(--accent); font-style: normal; }
+
+.use-case-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.use-case {
+  background: var(--bg2); border-radius: 8px;
+  border: 1px solid var(--border); padding: 12px;
+  text-align: center;
+}
+.uc-icon { font-size: 24px; margin-bottom: 6px; }
+.uc-title {
+  font-family: var(--cond); font-weight: 600;
+  font-size: 13px; color: var(--text); margin-bottom: 3px;
+}
+.uc-sub { font-size: 9px; color: var(--muted); line-height: 14px; }
+
+.how-it-works {
+  background: var(--bg2); border-radius: 10px;
+  border: 1px solid var(--border); padding: 16px;
+}
+.hiw-title {
+  font-family: var(--display); font-size: 16px;
+  letter-spacing: 2px; color: var(--accent); margin-bottom: 12px;
+}
+.hiw-step {
+  display: flex; gap: 12px; align-items: flex-start;
+  margin-bottom: 12px;
+}
+.hiw-step:last-child { margin-bottom: 0; }
+.step-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #0A1F35; border: 1px solid #1E3A5C;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--accent); flex-shrink: 0;
+  font-family: var(--display);
+}
+.step-text { font-size: 11px; color: #5A7A8A; line-height: 17px; flex: 1; }
+.step-text strong { color: var(--text); }
+
+.credit-box {
+  background: var(--bg2); border-radius: 10px;
+  border: 1px solid var(--border); padding: 16px;
+  text-align: center; margin-bottom: 24px;
+}
+.credit-title {
+  font-family: var(--display); font-size: 14px;
+  letter-spacing: 2px; color: var(--muted); margin-bottom: 8px;
+}
+.credit-text { font-size: 10px; color: #2A3A4A; line-height: 18px; }
+.credit-text strong { color: var(--muted); }
+
+
+/* ── ACTIVATION METHODS ── */
+.activation-row { display:flex; gap:8px; margin:0 0 4px 0; }
+.act-card {
+  flex:1; background:var(--bg2); border:1px solid var(--border);
+  border-radius:10px; padding:12px; text-align:center; cursor:pointer;
+  transition:all 0.2s; position:relative; -webkit-tap-highlight-color:transparent;
+}
+.act-card.enabled  { border-color:#00E5A044; background:#081A10; }
+.act-card.listening{ border-color:#4FC3F7; background:#041525; animation:listenPulse 1.5s infinite; }
+@keyframes listenPulse {
+  0%,100%{ box-shadow:0 0 0 0 #4FC3F722; }
+  50%    { box-shadow:0 0 0 8px #4FC3F700; }
+}
+.act-icon  { font-size:22px; margin-bottom:5px; }
+.act-title { font-family:var(--cond); font-weight:600; font-size:13px; color:var(--text); letter-spacing:1px; margin-bottom:2px; }
+.act-sub   { font-size:9px; color:var(--muted); letter-spacing:1px; }
+.act-status{ font-size:9px; margin-top:5px; letter-spacing:1px; color:var(--muted); min-height:13px; }
+.act-toggle{
+  position:absolute; top:7px; right:7px;
+  width:8px; height:8px; border-radius:50%; background:var(--border); transition:all 0.3s;
+}
+.act-card.enabled  .act-toggle { background:#00E5A0; box-shadow:0 0 6px #00E5A0; }
+.act-card.listening .act-toggle{ background:#4FC3F7; box-shadow:0 0 6px #4FC3F7; }
+.shake-dots{ display:flex; justify-content:center; gap:5px; margin-top:5px; }
+.shake-dot { width:7px; height:7px; border-radius:50%; background:var(--border); transition:all 0.15s; }
+.shake-dot.hit { background:#FF6B35; box-shadow:0 0 6px #FF6B35; transform:scale(1.3); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #1A2030; border-radius: 2px; }
+
+/* ── INSTALL BANNER ── */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+#install-btn {
+  display:none; width:100%; padding:18px;
+  background:linear-gradient(135deg,#006644,#004433);
+  border:2px solid #00E5A066; border-radius:14px;
+  font-family:'Bebas Neue',cursive; font-size:24px;
+  letter-spacing:4px; color:#fff; cursor:pointer;
+  text-align:center; outline:none;
+  -webkit-tap-highlight-color:transparent;
+  animation:ipulse 2s ease-in-out infinite;
+}
+#install-btn:active { transform:scale(0.97); }
+@keyframes ipulse {
+  0%,100% { box-shadow:0 0 20px #00E5A022; border-color:#00E5A044; }
+  50%     { box-shadow:0 0 50px #00E5A066; border-color:#00E5A099; }
+}
+#ios-steps {
+  display:none; background:#060F1A;
+  border:1px solid #4FC3F744; border-radius:12px;
+  padding:18px; text-align:center;
+  font-family:'Share Tech Mono',monospace;
+  font-size:12px; color:#5A8AAA; line-height:26px;
+}
+#ios-arrow {
+  font-size:30px; display:block; margin-bottom:8px;
+  animation:ibounce 1.4s ease-in-out infinite;
+}
+@keyframes ibounce {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-8px); }
+}
+#installed-msg {
+  display:none; text-align:center; padding:12px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px; color:#00E5A0; letter-spacing:2px;
+  border:1px solid #00E5A033; border-radius:10px;
+  background:#060F0A;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── HEADER ── -->
+<div id="header">
+  <div class="logo-pulse">
+    <div class="logo-dot" id="logo-dot"></div>
+  </div>
+  <div class="logo-text">
+    <div class="logo-title">SAFE<span>BEACON</span></div>
+    <div class="logo-sub">PERSONAL SAFETY · CC0 · OPEN SOURCE · 2026</div>
+  </div>
+  <div class="header-status" id="header-status">STANDBY</div>
+</div>
+
+<!-- ── TABS ── -->
+<div id="tabs">
+  <div class="tab active-beacon" id="tab-beacon"   onclick="switchTab('beacon')">🛡 BEACON</div>
+  <div class="tab" id="tab-contacts" onclick="switchTab('contacts')">📡 CONTACTS</div>
+  <div class="tab" id="tab-info"     onclick="switchTab('info')">ℹ INFO</div>
+</div>
+
+<!-- ════════════════════════════════════
+     BEACON SCREEN
+════════════════════════════════════ -->
+<div class="screen visible" id="screen-beacon">
+
+
+  <button id="install-btn" onclick="doInstall()">📲 &nbsp;ADD TO PHONE</button>
+  <div id="ios-steps">
+    <span id="ios-arrow">⬆</span>
+    <strong style="color:#4FC3F7;font-size:14px;letter-spacing:2px">ADD TO HOME SCREEN</strong><br/>
+    1. Tap the <strong style="color:#eee">Share</strong> button at the bottom of Safari<br/>
+    2. Tap <strong style="color:#eee">"Add to Home Screen"</strong><br/>
+    3. Tap <strong style="color:#eee">Add</strong> — done!
+  </div>
+  <div id="installed-msg">✓ &nbsp;SAFEBEACON IS ON YOUR PHONE</div>
+
+  <!-- Situation chips -->
+  <div class="situation-row">
+    <div class="sit-chip selected" id="sit-0" onclick="selectSituation(0,'🆘','EMERGENCY','I NEED HELP — EMERGENCY')">
+      <span class="sit-icon">🆘</span>EMERGENCY
+    </div>
+    <div class="sit-chip" id="sit-1" onclick="selectSituation(1,'😰','PANIC','I AM HAVING A PANIC ATTACK')">
+      <span class="sit-icon">😰</span>PANIC
+    </div>
+    <div class="sit-chip" id="sit-2" onclick="selectSituation(2,'🚗','ACCIDENT','I WAS IN AN ACCIDENT')">
+      <span class="sit-icon">🚗</span>ACCIDENT
+    </div>
+    <div class="sit-chip" id="sit-3" onclick="selectSituation(3,'🏥','MEDICAL','I NEED MEDICAL HELP')">
+      <span class="sit-icon">🏥</span>MEDICAL
+    </div>
+    <div class="sit-chip" id="sit-4" onclick="selectSituation(4,'⚠️','UNSAFE','I FEEL UNSAFE')">
+      <span class="sit-icon">⚠️</span>UNSAFE
+    </div>
+    <div class="sit-chip" id="sit-5" onclick="selectSituation(5,'🌍','DISASTER','NATURAL DISASTER')">
+      <span class="sit-icon">🌍</span>DISASTER
+    </div>
+  </div>
+
+  <!-- Status strip -->
+  <div class="status-strip" id="status-strip">
+    <div>
+      <div class="status-label">STATUS</div>
+      <div class="status-text" id="status-text">○ STANDBY</div>
+    </div>
+    <div class="chip-row">
+      <div class="chip" id="chip-gps">GPS</div>
+      <div class="chip" id="chip-sms">SMS</div>
+      <div class="chip" id="chip-snd">SIREN</div>
+      <div class="chip" id="chip-vib">VIB</div>
+    </div>
+  </div>
+
+  <!-- Elapsed -->
+  <div id="elapsed">00:00:00</div>
+  <div id="sms-countdown"></div>
+
+  <!-- Big button -->
+  <div class="btn-arena">
+    <div class="orbit" id="orbit1"></div>
+    <div class="orbit" id="orbit2"></div>
+    <button id="beacon-btn" onclick="toggleBeacon()">
+      <div class="btn-icon" id="btn-icon">🛡</div>
+      <div class="btn-label" id="btn-label">BEACON</div>
+      <div class="btn-sub" id="btn-sub">TAP TO ACTIVATE</div>
+    </button>
+  </div>
+
+  <!-- Situation message -->
+  <div id="situation-msg">SELECT A SITUATION ABOVE</div>
+
+  <!-- GPS card -->
+  <div class="info-card" id="gps-card" style="display:none">
+    <div class="ic-icon">📍</div>
+    <div class="ic-body">
+      <div class="ic-title" style="color:var(--accent2)">GPS LOCATION CAPTURED</div>
+      <div class="ic-sub" id="gps-text">ACQUIRING…</div>
+    </div>
+  </div>
+
+  <!-- Contacts count card -->
+  <div class="info-card" id="contacts-card">
+    <div class="ic-icon">📲</div>
+    <div class="ic-body">
+      <div class="ic-title">EMERGENCY CONTACTS</div>
+      <div class="ic-sub" id="contacts-sub">NO CONTACTS SAVED — TAP CONTACTS TAB</div>
+    </div>
+    <div class="ic-badge" id="contacts-badge">0</div>
+  </div>
+
+  <!-- Sound card -->
+  <div class="info-card" id="sound-card">
+    <div class="ic-icon">🔊</div>
+    <div class="ic-body">
+      <div class="ic-title">ALERT SIREN</div>
+      <div class="ic-sub" id="sound-sub">ACTIVATES WITH BEACON</div>
+    </div>
+    <div class="ic-badge" id="sound-badge">○</div>
+  </div>
+
+  <div class="tip-row">
+    ▸ Tap BEACON — siren fires, GPS captured, SMS sent to contacts<br/>
+    ▸ SMS repeats every 5 minutes until you tap BEACON again to stop<br/>
+    ▸ Works offline — SMS sends the moment signal returns<br/>
+    ▸ Contacts saved privately on your device only
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════
+     CONTACTS SCREEN
+════════════════════════════════════ -->
+<div class="screen" id="screen-contacts">
+
+  <div class="contacts-hero">
+    <div class="contacts-hero-title">📡 YOUR PEOPLE</div>
+    <div class="contacts-hero-sub">
+      When beacon fires, <strong>every saved contact receives an SMS</strong> with your GPS location and a Google Maps link — instantly.
+    </div>
+  </div>
+
+  <!-- Contact 1 -->
+  <div class="contact-block" id="cb1">
+    <div class="cb-header">
+      <div class="cb-num" id="cn1">1</div>
+      <div class="cb-name-label">PRIMARY CONTACT</div>
+      <div class="cb-check" id="cc1">✓</div>
+    </div>
+    <div class="input-row">
+      <input class="cb-name-input" id="cname1" type="text" placeholder="Name (e.g. Mom)" autocomplete="off"/>
+    </div>
+    <div class="input-row">
+      <input class="cb-input" id="cnum1" type="tel" placeholder="+1 555 000 0000" inputmode="tel" autocomplete="tel"/>
+      <button class="save-btn" onclick="saveContact(1)">SAVE</button>
+    </div>
+    <div class="sms-preview" id="sp1"></div>
+  </div>
+
+  <!-- Contact 2 -->
+  <div class="contact-block" id="cb2">
+    <div class="cb-header">
+      <div class="cb-num" id="cn2">2</div>
+      <div class="cb-name-label">CONTACT 2</div>
+      <div class="cb-check" id="cc2">✓</div>
+    </div>
+    <div class="input-row">
+      <input class="cb-name-input" id="cname2" type="text" placeholder="Name" autocomplete="off"/>
+    </div>
+    <div class="input-row">
+      <input class="cb-input" id="cnum2" type="tel" placeholder="+1 555 000 0000" inputmode="tel" autocomplete="tel"/>
+      <button class="save-btn" onclick="saveContact(2)">SAVE</button>
+    </div>
+    <div class="sms-preview" id="sp2"></div>
+  </div>
+
+  <!-- Contact 3 -->
+  <div class="contact-block" id="cb3">
+    <div class="cb-header">
+      <div class="cb-num" id="cn3">3</div>
+      <div class="cb-name-label">CONTACT 3</div>
+      <div class="cb-check" id="cc3">✓</div>
+    </div>
+    <div class="input-row">
+      <input class="cb-name-input" id="cname3" type="text" placeholder="Name" autocomplete="off"/>
+    </div>
+    <div class="input-row">
+      <input class="cb-input" id="cnum3" type="tel" placeholder="+1 555 000 0000" inputmode="tel" autocomplete="tel"/>
+      <button class="save-btn" onclick="saveContact(3)">SAVE</button>
+    </div>
+    <div class="sms-preview" id="sp3"></div>
+  </div>
+
+  <!-- Repeat SMS setting -->
+  <div class="repeat-setting">
+    <div class="rs-body">
+      <div class="rs-title">REPEAT SMS EVERY 5 MIN</div>
+      <div class="rs-sub" id="repeat-sub">Re-sends location until beacon is cancelled</div>
+    </div>
+    <div class="toggle on" id="repeat-toggle" onclick="toggleRepeat()"></div>
+  </div>
+
+  <!-- Test button -->
+  <div class="test-btn" onclick="testSMS()">
+    ⚡ TEST — SEND SOS SMS NOW
+  </div>
+  <div style="font-size:10px;color:#2A4A38;text-align:center;padding:4px;letter-spacing:1px" id="test-status"></div>
+
+  <div style="background:var(--bg2);border-radius:10px;border:1px solid var(--border);padding:14px;font-size:10px;color:#2A3A4A;line-height:19px;margin-bottom:24px">
+    ▸ Numbers stored only on your phone — never sent anywhere<br/>
+    ▸ Include country code: +1 (USA), +44 (UK), +81 (Japan), +90 (Turkey)<br/>
+    ▸ SMS includes your name, GPS coordinates and a Google Maps link<br/>
+    ▸ Test it now so your contacts know what to expect
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════
+     INFO SCREEN
+════════════════════════════════════ -->
+<div class="screen" id="screen-info">
+
+  <div class="info-hero">
+    <div class="info-hero-title">SAFE<span>BEACON</span></div>
+    <div class="info-hero-sub">
+      One tap. Your location goes to your people.<br/>
+      For <em>any moment</em> you need help — anywhere in the world.
+    </div>
+  </div>
+
+  <div class="use-case-grid">
+    <div class="use-case">
+      <div class="uc-icon">😰</div>
+      <div class="uc-title">Panic Attack</div>
+      <div class="uc-sub">Friends know you need them, exactly where you are</div>
+    </div>
+    <div class="use-case">
+      <div class="uc-icon">🚗</div>
+      <div class="uc-title">Car Accident</div>
+      <div class="uc-sub">GPS fires to family the second you tap</div>
+    </div>
+    <div class="use-case">
+      <div class="uc-icon">🏃</div>
+      <div class="uc-title">Being Followed</div>
+      <div class="uc-sub">Silent mode activates location without drawing attention</div>
+    </div>
+    <div class="use-case">
+      <div class="uc-icon">👴</div>
+      <div class="uc-title">Elderly Fall</div>
+      <div class="uc-sub">Shake detection fires the beacon automatically</div>
+    </div>
+    <div class="use-case">
+      <div class="uc-icon">🏥</div>
+      <div class="uc-title">Medical Crisis</div>
+      <div class="uc-sub">Siren + location alert to all contacts at once</div>
+    </div>
+    <div class="use-case">
+      <div class="uc-icon">🌍</div>
+      <div class="uc-title">Natural Disaster</div>
+      <div class="uc-sub">Earthquake, flood, wildfire — GPS when it matters most</div>
+    </div>
+  </div>
+
+  <div class="how-it-works">
+    <div class="hiw-title">HOW IT WORKS</div>
+    <div class="hiw-step">
+      <div class="step-num">1</div>
+      <div class="step-text"><strong>Save your contacts</strong> — up to 3 people. Phone numbers stored only on your device.</div>
+    </div>
+    <div class="hiw-step">
+      <div class="step-num">2</div>
+      <div class="step-text"><strong>Select your situation</strong> — Panic, Medical, Accident, Unsafe, Disaster, or Emergency.</div>
+    </div>
+    <div class="hiw-step">
+      <div class="step-num">3</div>
+      <div class="step-text"><strong>Tap BEACON</strong> — GPS captured instantly. Siren fires. SMS sent to all contacts with your coordinates and a Google Maps link.</div>
+    </div>
+    <div class="hiw-step">
+      <div class="step-num">4</div>
+      <div class="step-text"><strong>Repeats every 5 minutes</strong> — your location is re-sent automatically until you tap BEACON again to cancel.</div>
+    </div>
+    <div class="hiw-step">
+      <div class="step-num">5</div>
+      <div class="step-text"><strong>Tap again to cancel</strong> — sends a final "ALL CLEAR" message to your contacts.</div>
+    </div>
+  </div>
+
+  <div class="credit-box">
+    <div class="credit-title">OPEN SOURCE · CC0 · PUBLIC DOMAIN</div>
+    <div class="credit-text">
+      Created by <strong>Kaveh Dimitri Salahi</strong> with Claude Anthropic · March 2026<br/>
+      Free for everyone. Governments, NGOs, organizations — deploy at any scale.<br/>
+      No royalties. No barriers. No restrictions. Ever.
+    </div>
+  </div>
+
+</div>
+</div><!-- #app -->
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let beaconActive  = false;
+let repeatSMS     = true;
+let elapsedSecs   = 0;
+let smsCountdown  = 300; // 5 min
+let elTimer       = null;
+let smsTimer      = null;
+let countTimer    = null;
+let audioCtx      = null;
+let sirenRunning  = false;
+let sirenTimeout  = null;
+let lastGPS       = null;
+
+let currentSit = { icon:'🆘', label:'EMERGENCY', msg:'I NEED HELP — EMERGENCY' };
+
+// ═══════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════
+function switchTab(tab) {
+  ['beacon','contacts','info'].forEach(t => {
+    document.getElementById('screen-'+t).classList.toggle('visible', t === tab);
+    const el = document.getElementById('tab-'+t);
+    el.className = 'tab' + (t === tab ? ' active-'+t : '');
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// SITUATION SELECTOR
+// ═══════════════════════════════════════════════════
+function selectSituation(idx, icon, label, msg) {
+  for (let i=0;i<6;i++) {
+    document.getElementById('sit-'+i).classList.toggle('selected', i === idx);
+  }
+  currentSit = { icon, label, msg };
+  document.getElementById('situation-msg').textContent =
+    beaconActive ? msg : 'SELECTED: ' + label;
+  if (!beaconActive) {
+    document.getElementById('btn-icon').textContent = icon;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// AUDIO SIREN
+// ═══════════════════════════════════════════════════
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playSiren() {
+  if (!sirenRunning) return;
+  const ctx = getAudio();
+  const osc = ctx.createOscillator();
+  const g   = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(780, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(1300, ctx.currentTime + 0.5);
+  g.gain.setValueAtTime(0.6, ctx.currentTime);
+  g.gain.setValueAtTime(0, ctx.currentTime + 0.55);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.6);
+  if (sirenRunning) sirenTimeout = setTimeout(playSiren, 700);
+}
+function startSiren() { sirenRunning = true; playSiren(); }
+function stopSiren()  { sirenRunning = false; clearTimeout(sirenTimeout); }
+
+
+
+
+// ═══════════════════════════════════════════════════
+// CONTACTS
+// ═══════════════════════════════════════════════════
+function saveContact(n) {
+  const num  = document.getElementById('cnum'+n).value.trim();
+  const name = document.getElementById('cname'+n).value.trim();
+  if (!num) return;
+  localStorage.setItem('sb_num_'+n,  num);
+  localStorage.setItem('sb_name_'+n, name || 'Contact '+n);
+  document.getElementById('cb'+n).classList.add('has-contact');
+  document.getElementById('cn'+n).classList.add('filled');
+  document.getElementById('cc'+n).classList.add('visible');
+  showSMSPreview(n);
+  updateContactsBadge();
+}
+
+function loadContacts() {
+  for (let i=1;i<=3;i++) {
+    const num  = localStorage.getItem('sb_num_'+i);
+    const name = localStorage.getItem('sb_name_'+i);
+    if (num) {
+      document.getElementById('cnum'+i).value  = num;
+      document.getElementById('cname'+i).value = name || '';
+      document.getElementById('cb'+i).classList.add('has-contact');
+      document.getElementById('cn'+i).classList.add('filled');
+      document.getElementById('cc'+i).classList.add('visible');
+      showSMSPreview(i);
+    }
+  }
+  updateContactsBadge();
+}
+
+function showSMSPreview(n) {
+  const name = localStorage.getItem('sb_name_'+n) || 'Contact '+n;
+  const el   = document.getElementById('sp'+n);
+  el.textContent = `Preview: "🚨 SAFEBEACON — ${name} needs help. Location: [GPS]. Map: maps.google.com/... Situation: ${currentSit.label}"`;
+  el.classList.add('visible');
+}
+
+function getContacts() {
+  return [1,2,3].map(i => ({
+    num:  localStorage.getItem('sb_num_'+i),
+    name: localStorage.getItem('sb_name_'+i) || 'Contact '+i,
+  })).filter(c => c.num);
+}
+
+function updateContactsBadge() {
+  const n = getContacts().length;
+  document.getElementById('contacts-badge').textContent = n;
+  document.getElementById('contacts-badge').classList.toggle('on', n > 0);
+  document.getElementById('contacts-sub').textContent =
+    n > 0
+      ? `${n} CONTACT${n>1?'S':''} WILL RECEIVE YOUR GPS LOCATION`
+      : 'NO CONTACTS SAVED — TAP CONTACTS TAB';
+}
+
+// ═══════════════════════════════════════════════════
+// SMS
+// ═══════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+// ═══════════════════════════════════════════════════
+// SMS  ── must fire synchronously on user gesture
+// ═══════════════════════════════════════════════════
+function buildMessage(lat, lon) {
+  const loc = (lat && lat !== 'null')
+    ? "I'm here: maps.google.com/?q=" + lat + "," + lon
+    : "I can't share my location right now.";
+  const msgs = {
+    'EMERGENCY': "I need help right now. Please call me as soon as you see this.\n" + loc,
+    'PANIC':     "I'm not okay and I need someone with me. Please call or come to me.\n" + loc,
+    'ACCIDENT':  "I've been in an accident. I need help. Please call me.\n" + loc,
+    'MEDICAL':   "I need medical help. Please call me or send help to this location.\n" + loc,
+    'UNSAFE':    "I don't feel safe right now. Please call me immediately.\n" + loc,
+    'DISASTER':  "There's been a disaster near me. I need help. This is where I am.\n" + loc,
+  };
+  return msgs[currentSit.label] || msgs['EMERGENCY'];
+}
+
+// Fire SMS via <a> click — most reliable cross-platform method
+function fireSMS(lat, lon) {
+  const contacts = getContacts();
+  if (!contacts.length) {
+    showStatus('Go to CONTACTS tab and save a number first', '#FF6B35');
+    return;
+  }
+  const numbers = contacts.map(c => c.num).join(';'); // iOS uses ; Android uses ,
+  const body    = buildMessage(lat, lon);
+  const a       = document.createElement('a');
+  a.href        = 'sms:' + numbers + '?body=' + encodeURIComponent(body);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  document.getElementById('chip-sms').classList.add('on');
+  showStatus('SMS sent to ' + contacts.length + ' contact' + (contacts.length > 1 ? 's' : ''), '#00E5A0');
+}
+
+function sendAllClear() {
+  const contacts = getContacts();
+  if (!contacts.length) return;
+  const numbers = contacts.map(c => c.num).join(';');
+  const a       = document.createElement('a');
+  a.href        = 'sms:' + numbers + '?body=' + encodeURIComponent(
+    "I'm okay now. Thank you for being there. No need to worry."
+  );
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function startSMSRepeat(lat, lon) {
+  if (!repeatSMS) return;
+  smsCountdown = 300;
+  clearInterval(countTimer);
+  countTimer = setInterval(() => {
+    smsCountdown--;
+    const m = Math.floor(smsCountdown / 60);
+    const s = String(smsCountdown % 60).padStart(2, '0');
+    showStatus('Next SMS in ' + m + ':' + s, '#3A4A5C');
+    if (smsCountdown <= 0) {
+      smsCountdown = 300;
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          p => fireSMS(p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6)),
+          () => fireSMS(lat, lon)
+        );
+      } else {
+        fireSMS(lat, lon);
+      }
+    }
+  }, 1000);
+}
+
+function testSMS() {
+  const contacts = getContacts();
+  const st = document.getElementById('test-status');
+  if (!contacts.length) {
+    st.textContent = 'No contacts saved — add numbers in CONTACTS tab first';
+    st.style.color = '#FF6B35'; return;
+  }
+  // Fire immediately — on user gesture
+  fireSMS(null, null);
+  st.textContent = 'SMS opened — location will be added if GPS available';
+  st.style.color = '#00E5A0';
+}
+
+function showStatus(msg, color) {
+  const el = document.getElementById('sms-countdown');
+  if (el) { el.textContent = msg; el.style.color = color || '#00E5A0'; el.classList.add('visible'); }
+}
+
+// ═══════════════════════════════════════════════════
+// GPS
+// ═══════════════════════════════════════════════════
+function captureGPS(onDone) {
+  const card   = document.getElementById('gps-card');
+  const textEl = document.getElementById('gps-text');
+  if (card)   card.style.display = 'flex';
+  if (textEl) { textEl.textContent = 'Acquiring location...'; textEl.style.color = '#4FC3F7'; }
+  document.getElementById('chip-gps').classList.add('on');
+
+  if (!navigator.geolocation) {
+    if (textEl) textEl.textContent = 'GPS not supported on this browser';
+    onDone(null, null); return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lon = pos.coords.longitude.toFixed(6);
+      const acc = Math.round(pos.coords.accuracy);
+      lastGPS = { lat, lon };
+      if (textEl) { textEl.textContent = lat + ', ' + lon + '  ±' + acc + 'm'; textEl.style.color = '#00E5A0'; }
+      onDone(lat, lon);
+    },
+    err => {
+      const m = { 1:'Allow location in browser settings', 2:'GPS unavailable', 3:'GPS timed out — try again' };
+      if (textEl) { textEl.textContent = m[err.code] || 'Location unavailable'; textEl.style.color = '#FF6B35'; }
+      onDone(null, null);
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// VOICE ACTIVATION
+// ═══════════════════════════════════════════════════
+let voiceEnabled = false;
+let recognition  = null;
+
+function toggleVoice() {
+  voiceEnabled ? stopVoice() : startVoice();
+}
+
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    setVoiceStatus('Not available — use Chrome on Android', '#FF6B35');
+    return;
+  }
+  recognition              = new SR();
+  recognition.continuous   = false;  // restart manually — more reliable
+  recognition.lang         = 'en-US';
+  recognition.maxAlternatives = 3;
+
+  recognition.onstart = () => {
+    voiceEnabled = true;
+    document.getElementById('voice-card').classList.add('listening');
+    setVoiceStatus('LISTENING...', '#4FC3F7');
+  };
+
+  recognition.onresult = e => {
+    let heard = '';
+    for (let i = 0; i < e.results.length; i++) {
+      for (let j = 0; j < e.results[i].length; j++) {
+        heard += e.results[i][j].transcript.toLowerCase() + ' ';
+      }
+    }
+    heard = heard.trim();
+    const triggers = ['help','sos','emergency','save me','call help','beacon','mayday','danger'];
+    if (triggers.some(t => heard.includes(t))) {
+      setVoiceStatus('HEARD: "' + heard + '" — ACTIVATING', '#FF3366');
+      if (!beaconActive) activate();
+    } else {
+      setVoiceStatus('heard: "' + heard + '"', '#3A4A5C');
+    }
+    // Restart listening
+    if (voiceEnabled) setTimeout(() => { try { recognition.start(); } catch(e){} }, 300);
+  };
+
+  recognition.onerror = e => {
+    if (e.error === 'not-allowed') {
+      setVoiceStatus('Mic permission denied', '#FF6B35');
+      voiceEnabled = false;
+      document.getElementById('voice-card').classList.remove('listening','enabled');
+      return;
+    }
+    // Restart on no-speech or other recoverable errors
+    if (voiceEnabled) setTimeout(() => { try { recognition.start(); } catch(x){} }, 800);
+  };
+
+  recognition.onend = () => {
+    if (voiceEnabled) setTimeout(() => { try { recognition.start(); } catch(x){} }, 300);
+  };
+
+  try { recognition.start(); document.getElementById('voice-card').classList.add('enabled'); }
+  catch(e) { setVoiceStatus('Could not start microphone', '#FF6B35'); }
+}
+
+function stopVoice() {
+  voiceEnabled = false;
+  if (recognition) { try { recognition.abort(); } catch(e){} recognition = null; }
+  document.getElementById('voice-card').classList.remove('enabled','listening');
+  setVoiceStatus('TAP TO ENABLE', '');
+}
+
+function setVoiceStatus(msg, color) {
+  const el = document.getElementById('voice-status');
+  if (el) { el.textContent = msg; el.style.color = color || ''; }
+}
+
+// ═══════════════════════════════════════════════════
+// SHAKE ACTIVATION
+// ═══════════════════════════════════════════════════
+let shakeEnabled = false;
+let shakeCount   = 0;
+let lastMag      = 0;
+let shakeReset   = null;
+let lastShakeTime = 0;
+
+function toggleShake() {
+  shakeEnabled ? stopShake() : startShake();
+}
+
+function startShake() {
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().then(r => {
+      if (r === 'granted') attachShake();
+      else setShakeStatus('Motion permission denied', '#FF6B35');
+    }).catch(() => setShakeStatus('Permission error', '#FF6B35'));
+  } else {
+    attachShake();
+  }
+}
+
+function attachShake() {
+  shakeEnabled = true;
+  shakeCount   = 0;
+  lastMag      = 0;
+  document.getElementById('shake-card').classList.add('enabled');
+  setShakeStatus('ARMED · SHAKE 3×', '#00E5A0');
+  updateShakeDots(0);
+  window.addEventListener('devicemotion', onShake, true);
+}
+
+function stopShake() {
+  shakeEnabled = false;
+  shakeCount   = 0;
+  window.removeEventListener('devicemotion', onShake, true);
+  document.getElementById('shake-card').classList.remove('enabled');
+  setShakeStatus('TAP TO ENABLE', '');
+  updateShakeDots(0);
+}
+
+function onShake(e) {
+  if (!shakeEnabled || beaconActive) return;
+  const ag  = e.accelerationIncludingGravity || e.acceleration;
+  if (!ag) return;
+  const mag   = Math.sqrt((ag.x||0)**2 + (ag.y||0)**2 + (ag.z||0)**2);
+  const delta = Math.abs(mag - lastMag);
+  lastMag     = mag;
+  const now   = Date.now();
+
+  // Threshold 20 — firm shake, not accidental bump
+  if (delta > 20 && (now - lastShakeTime) > 250) {
+    lastShakeTime = now;
+    shakeCount    = Math.min(shakeCount + 1, 3);
+    updateShakeDots(shakeCount);
+    setShakeStatus('SHAKE ' + shakeCount + ' / 3', '#FF6B35');
+    clearTimeout(shakeReset);
+    shakeReset = setTimeout(() => {
+      shakeCount = 0;
+      updateShakeDots(0);
+      setShakeStatus('ARMED · SHAKE 3×', '#00E5A0');
+    }, 2500);
+    if (shakeCount >= 3) {
+      clearTimeout(shakeReset);
+      shakeCount = 0;
+      updateShakeDots(0);
+      setShakeStatus('ACTIVATED!', '#FF3366');
+      activate();
+    }
+  }
+}
+
+function updateShakeDots(n) {
+  for (let i=1;i<=3;i++) {
+    const el = document.getElementById('sd'+i);
+    if (el) el.classList.toggle('hit', i <= n);
+  }
+}
+
+function setShakeStatus(msg, color) {
+  const el = document.getElementById('shake-status');
+  if (el) { el.textContent = msg; el.style.color = color || ''; }
+}
+
+// ═══════════════════════════════════════════════════
+// ACTIVATE / DEACTIVATE
+// ═══════════════════════════════════════════════════
+function toggleRepeat() {
+  repeatSMS = !repeatSMS;
+  document.getElementById('repeat-toggle').classList.toggle('on', repeatSMS);
+  document.getElementById('repeat-sub').textContent = repeatSMS
+    ? 'Re-sends location until beacon is cancelled'
+    : 'Single SMS only — no repeating';
+}
+
+// ═══════════════════════════════════════════════════
+// GEOLOCATION
+// ═══════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════════════
+// VIBRATION
+// ═══════════════════════════════════════════════════
+const VIB = [200,100,200,100,200,300,500,100,500,100,500,300,200,100,200,100,200,1000];
+function startVib() { if ('vibrate' in navigator) navigator.vibrate(VIB.concat(VIB)); }
+function stopVib()  { if ('vibrate' in navigator) navigator.vibrate(0); }
+
+// ═══════════════════════════════════════════════════
+// WAKE LOCK
+// ═══════════════════════════════════════════════════
+let wakeLock = null;
+async function keepAwake() {
+  if ('wakeLock' in navigator) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (beaconActive && document.visibilityState === 'visible') keepAwake();
+});
+
+// ═══════════════════════════════════════════════════
+// ACTIVATE / DEACTIVATE
+// ═══════════════════════════════════════════════════
+async function activate() {
+  if (beaconActive) return;
+  beaconActive = true;
+  sosIdx = 0;
+  elapsedSecs = 0;
+
+  // UI → ACTIVE
+  document.getElementById('status-strip').className = 'status-strip active';
+  document.getElementById('status-text').textContent = '● BEACON ACTIVE';
+  document.getElementById('status-text').className   = 'status-text active';
+  document.getElementById('beacon-btn').className    = 'active';
+  document.getElementById('btn-label').textContent   = 'SOS';
+  document.getElementById('btn-label').className     = 'btn-label active';
+  document.getElementById('btn-icon').textContent    = currentSit.icon;
+  document.getElementById('btn-sub').textContent     = '● TAP TO CANCEL';
+  document.getElementById('btn-sub').className       = 'btn-sub active';
+  document.getElementById('orbit1').classList.add('active');
+  document.getElementById('orbit2').classList.add('active');
+  document.getElementById('elapsed').classList.add('visible');
+  document.getElementById('sms-countdown').classList.add('visible');
+  document.getElementById('logo-dot').classList.add('armed');
+  document.getElementById('header-status').textContent = '● LIVE';
+  document.getElementById('header-status').classList.add('live');
+  document.getElementById('situation-msg').textContent = currentSit.msg;
+  document.getElementById('situation-msg').classList.add('active');
+  document.getElementById('sound-badge').textContent = '●';
+  document.getElementById('sound-badge').classList.add('on');
+  document.getElementById('sound-sub').textContent = 'SIREN ACTIVE';
+  ['chip-snd','chip-vib'].forEach(id => document.getElementById(id).classList.add('on'));
+
+  // Hardware
+  getAudio();
+  startSiren();
+  startVib();
+  keepAwake();
+
+  // ── Fire SMS IMMEDIATELY on user gesture (must be synchronous)
+  fireSMS(null, null);
+
+  // ── GPS runs in background, updates display + resends with coords
+  captureGPS((lat, lon) => {
+    if (lat) {
+      // Resend with real GPS after lock
+      setTimeout(() => fireSMS(lat, lon), 500);
+      if (repeatSMS) startSMSRepeat(lat, lon);
+    }
+  });
+
+  // Elapsed timer
+  elTimer = setInterval(() => {
+    elapsedSecs++;
+    const h = String(Math.floor(elapsedSecs/3600)).padStart(2,'0');
+    const m = String(Math.floor((elapsedSecs%3600)/60)).padStart(2,'0');
+    const s = String(elapsedSecs%60).padStart(2,'0');
+    document.getElementById('elapsed').textContent = `${h}:${m}:${s}`;
+  }, 1000);
+}
+
+function deactivate() {
+  if (!beaconActive) return;
+  beaconActive = false;
+
+  // Stop everything
+  stopSiren();
+  stopVib();
+  clearInterval(elTimer);
+  clearInterval(countTimer);
+  clearTimeout(smsTimer);
+
+  // Send All Clear
+  sendAllClear();
+
+  // UI → STANDBY
+  document.getElementById('status-strip').className = 'status-strip';
+  document.getElementById('status-text').textContent = '○ STANDBY';
+  document.getElementById('status-text').className   = 'status-text';
+  document.getElementById('beacon-btn').className    = '';
+  document.getElementById('btn-label').textContent   = 'BEACON';
+  document.getElementById('btn-label').className     = 'btn-label';
+  document.getElementById('btn-icon').textContent    = currentSit.icon;
+  document.getElementById('btn-sub').textContent     = 'TAP TO ACTIVATE';
+  document.getElementById('btn-sub').className       = 'btn-sub';
+  document.getElementById('orbit1').classList.remove('active');
+  document.getElementById('orbit2').classList.remove('active');
+  document.getElementById('elapsed').classList.remove('visible');
+  document.getElementById('sms-countdown').classList.remove('visible');
+  document.getElementById('logo-dot').classList.remove('armed');
+  document.getElementById('header-status').textContent = 'STANDBY';
+  document.getElementById('header-status').classList.remove('live');
+  document.getElementById('situation-msg').textContent = 'SELECT A SITUATION ABOVE';
+  document.getElementById('situation-msg').classList.remove('active');
+  document.getElementById('gps-card').classList.remove('visible');
+  document.getElementById('sound-badge').textContent = '○';
+  document.getElementById('sound-badge').classList.remove('on');
+  document.getElementById('sound-sub').textContent = 'ACTIVATES WITH BEACON';
+  ['chip-gps','chip-sms','chip-snd','chip-vib'].forEach(id => {
+    document.getElementById(id).classList.remove('on');
+    document.getElementById(id).classList.remove('sms-on');
+  });
+}
+
+function toggleBeacon() {
+  if (beaconActive) deactivate(); else activate();
+}
+
+// ═══════════════════════════════════════════════════
+// PWA INSTALL
+// ═══════════════════════════════════════════════════
+(function() {
+  var _ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var _sa  = window.matchMedia('(display-mode:standalone)').matches
+          || window.navigator.standalone === true;
+  var _dp  = null;
+
+  function _btn()  { return document.getElementById('install-btn'); }
+  function _steps(){ return document.getElementById('ios-steps'); }
+  function _done() { return document.getElementById('installed-msg'); }
+
+  function showBtn(label) {
+    var b = _btn(); if (!b) return;
+    b.style.display = 'block';
+    if (label) b.innerHTML = label;
+  }
+  function showDone() {
+    if (_btn())   _btn().style.display   = 'none';
+    if (_steps()) _steps().style.display = 'none';
+    if (_done())  _done().style.display  = 'block';
+  }
+
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault(); _dp = e;
+    if (!_sa) showBtn('📲 &nbsp;ADD TO PHONE');
+  });
+  window.addEventListener('appinstalled', function() { _dp = null; showDone(); });
+  window.addEventListener('load', function() {
+    if (_sa)       showDone();
+    else if (_ios) showBtn('📲 &nbsp;ADD TO IPHONE');
+  });
+
+  window.doInstall = async function() {
+    if (_dp) {
+      _dp.prompt();
+      var r = await _dp.userChoice;
+      _dp = null;
+      if (r.outcome === 'accepted') showDone();
+    } else if (_ios) {
+      if (_btn())   _btn().style.display   = 'none';
+      if (_steps()) _steps().style.display = 'block';
+    }
+  };
+})();
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  loadContacts();
+  selectSituation(0,'🆘','EMERGENCY','I NEED HELP — EMERGENCY');
+});
+</script>
+</body>
+</html>
